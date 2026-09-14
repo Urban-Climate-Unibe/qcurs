@@ -4,7 +4,7 @@
 
 biel_tidy <- function() {
   # ASCII-only file, so a plain read is safe here (see biel_meta for the locale note)
-  utils::read.csv(system.file("extdata", "Biel_test_tidy.csv", package = "qcurbnet"),
+  utils::read.csv(system.file("extdata", "Biel_test_tidy.csv", package = "qcurs"),
                   sep = ";", dec = ".", stringsAsFactors = FALSE)
 }
 
@@ -12,7 +12,7 @@ biel_meta <- function() {
   # Read via readLines + iconv rather than a UTF-8 connection: read.csv() on a
   # UTF-8 connection dies with "invalid input" under a C locale, which is what
   # R CMD check and many CI runners use. Bytes first, encoding second.
-  path <- system.file("extdata", "metadata.csv", package = "qcurbnet")
+  path <- system.file("extdata", "metadata.csv", package = "qcurs")
   txt  <- readLines(path, warn = FALSE)
   txt  <- iconv(txt, from = "UTF-8", to = "UTF-8", sub = "")   # drop undecodable bytes
   txt[1] <- sub("^\ufeff", "", txt[1])                         # strip the BOM from the header
@@ -22,7 +22,7 @@ biel_meta <- function() {
 }
 
 biel_manifest <- function() {
-  utils::read.csv(system.file("extdata", "planted_errors.csv", package = "qcurbnet"),
+  utils::read.csv(system.file("extdata", "planted_errors.csv", package = "qcurs"),
                   sep = ";", stringsAsFactors = FALSE)
 }
 

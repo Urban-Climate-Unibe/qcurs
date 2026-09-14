@@ -1,4 +1,4 @@
-# qcurbnet
+# qcurs
 
 Quality control for urban low-cost temperature networks (URBNET/URS campaigns).
 
@@ -6,13 +6,13 @@ Quality control for urban low-cost temperature networks (URBNET/URS campaigns).
 
 ```r
 # install.packages("remotes")
-remotes::install_local("qcurbnet_0.1.0.tar.gz")
+remotes::install_local("qcurs_0.1.0.tar.gz")
 ```
 
 ## Use
 
 ```r
-library(qcurbnet)
+library(qcurs)
 
 # 1. read the file YOURSELF and check the result - qc_as_xts() deliberately
 #    does not read files, because CSV failures are silent

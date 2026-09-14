@@ -1,11 +1,11 @@
-Package: qcurbnet
+Package: qcurs
 Type: Package
 Title: Quality Control for Urban Temperature Sensor Networks
 Version: 0.1.0
-Authors@R: person("Patrick", "Bigler", role = c("aut", "cre"),
-    email = "patrick.bigler@unibe.ch")
-Description: Rebuilt quality-control chain for urban low-cost temperature
-    networks (URBNET/URS campaigns), levels T_QC_1 to T_QC_8 plus optional
+Authors@R: person("Patrick", "Kallabis", role = c("aut", "cre"),
+    email = "patrick.kallabis@unibe.ch")
+Description: Quality-control chain for urban low-cost temperature and relative humidity
+    networks, levels T_QC_1 to T_QC_8 plus optional
     linear gap interpolation (T_QC_9). Standardised input handling via
     qc_prepare_input(), documented flag codes (0 unobjected, N objected by
     level N, 50/50+N interpolated), honest refusals where the data cannot

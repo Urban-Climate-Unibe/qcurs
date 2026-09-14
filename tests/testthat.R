@@ -1,4 +1,4 @@
 library(testthat)
-library(qcurbnet)
+library(qcurs)
 
-test_check("qcurbnet")
+test_check("qcurs")
