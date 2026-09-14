@@ -1,0 +1,271 @@
+﻿ID;Name;LON;LAT;Landuse;City
+Log_B1;Vingelz;7.22097;47.13093;Water;BIEL
+Log_B2;Esplanade;7.249136;47.13571;Sealed Areas;BIEL
+Log_B3;Stadtpark;7.25349;47.14111;Vegetated Areas;BIEL
+Log_B4;Gurzelen;7.26361;47.14667;Sealed Areas;BIEL
+Log_B5;Taubenloch;7.26763;47.15368;Vegetated Areas;BIEL
+Log_B6;Industrie;7.29252;47.16292;Sealed Areas;BIEL
+Log_B7;Grenchen;7.415064;47.179024;Vegetated Areas;BIEL
+Log_1;VonRoll;7.42252;46.95291;Sealed Areas;BERN
+Log_2;Europaplatz;7.40633;46.94333;Sealed Areas;BERN
+Log_7;Brunnhof;7.42713;46.94479;Sealed Areas;BERN
+Log_8;Wankdorf ESP;7.46247;46.968;Sealed Areas;BERN
+Log_9;Bremgartenfriedhof;7.42015;46.9503;Vegetated Areas;BERN
+Log_10;Hintere Langgasse;7.43541;46.95789;Sealed Areas;BERN
+Log_13;Egelsee;7.46442;46.94469;Vegetated Areas;BERN
+Log_14;Helvetiaplatz;7.44885;46.94381;Sealed Areas;BERN
+Log_16;Bubenbergplatz;7.43843;46.94728;Sealed Areas;BERN
+Log_17;Rosengarten;7.4602;46.95188;Vegetated Areas;BERN
+Log_19;Galgenfeld Neubausiedlung;7.46987;46.95063;Sealed Areas;BERN
+Log_21;Gaswerk;7.44166;46.93964;Sealed Areas;BERN
+Log_22;Matte Muhleplatz;7.45583;46.94701;Sealed Areas;BERN
+Log_23;Ostermundigen Ahornstrasse;7.49879;46.95566;Sealed Areas;BERN
+Log_25;Liebefeld;7.42031;46.92781;Sealed Areas;BERN
+Log_26;Inselspital;7.42571;46.94719;Sealed Areas;BERN
+Log_28;Parkli bei Eigerplatz;7.43094;46.94195;Sealed Areas;BERN
+Log_30;Galgenfeld Industrie;7.47194;46.95553;Sealed Areas;BERN
+Log_31;Weiermatt;7.40995;46.92041;Vegetated Areas;BERN
+Log_32;Bremgartenwald;7.42128;46.95739;Forest;BERN
+Log_33;Dahlholzliwald;7.45656;46.93798;Forest;BERN
+Log_34;Kasernenareal;7.45801;46.95697;Vegetated Areas;BERN
+Log_36;Wyttenbachstrasse;7.44773;46.95518;Sealed Areas;BERN
+Log_37;Lorraine;7.44513;46.95898;Sealed Areas;BERN
+Log_38;Spiegel;7.43739;46.92607;Vegetated Areas;BERN
+Log_39;Weyermannshaus Industrie;7.40134;46.949;Sealed Areas;BERN
+Log_41;Monbijou-Park;7.43462;46.94187;Vegetated Areas;BERN
+Log_42;Gerechtigkeitsgasse;7.45351;46.9481;Sealed Areas;BERN
+Log_45;Zytglogge;7.4474;46.94819;Sealed Areas;BERN
+Log_48;Viererfeld 1 (Sportplatz);7.43823;46.96512;Vegetated Areas;BERN
+Log_51;Bumpliz Stockacker;7.39587;46.94302;Sealed Areas;BERN
+Log_52;Umland Bumpliz;7.36084;46.93354;Vegetated Areas;BERN
+Log_53;Waffenweg;7.45192;46.96173;Sealed Areas;BERN
+Log_55;Bollwerk;7.44082;46.95151;Sealed Areas;BERN
+Log_57;Eigerplatz;7.43141;46.94067;Sealed Areas;BERN
+Log_58;Murifeld;7.47992;46.93919;Vegetated Areas;BERN
+Log_59;Schlossmatte Familiengarten;7.41688;46.94211;Vegetated Areas;BERN
+Log_61;Westside Center;7.37478;46.94555;Sealed Areas;BERN
+Log_62;Felsenhaldenweg;7.44122;46.97417;Sealed Areas;BERN
+Log_65;Umland Bolligen;7.50376;46.96681;Vegetated Areas;BERN
+Log_69;Eisenbahnquartier;7.42317;46.93716;Sealed Areas;BERN
+Log_70;Bundesplatz;7.44353;46.94692;Sealed Areas;BERN
+Log_71;Hirschengraben;7.43786;46.94658;Sealed Areas;BERN
+Log_73;Obstberg;7.46407;46.94714;Sealed Areas;BERN
+Log_76;Wabern Viktoriastrasse;7.45326;46.93122;Vegetated Areas;BERN
+Log_78;Dalmazibrucke;7.44571;46.94445;Water;BERN
+Log_79;Umland Belp;7.51184;46.89942;Vegetated Areas;BERN
+Log_80;Elfenau;7.4695;46.93558;Vegetated Areas;BERN
+Log_82;Thunplatz;7.45824;46.94059;Sealed Areas;BERN
+Log_83;Stadtlabor;7.46257;46.96311;Vegetated Areas;BERN
+Log_86;Ostermundigen Lotschenstrasse;7.48719;46.95309;Sealed Areas;BERN
+Log_87;Engehalde Stauwehr;7.44503;46.96546;Water;BERN
+Log_89;Gurten Kulm;7.43971;46.91833;Forest;BERN
+Log_98;Zollikofen 2m;7.46407;46.99079;Vegetated Areas;BERN
+Log_99;Zollikofen 3m;7.46407;46.99079;Vegetated Areas;BERN
+Log_101;Steinholzliwald;7.42805;46.93514;Forest;BERN
+Log_102;Vordere Langgasse;7.43714;46.95171;Sealed Areas;BERN
+Log_111;Tellstrasse;7.46146;46.96017;Sealed Areas;BERN
+Log_112;Ausserholligen Post;7.40188;46.94755;Sealed Areas;BERN
+Log_113;Ausserholligen ewb;7.40642;46.94542;Sealed Areas;BERN
+Log_116;Ansermetplatz;7.37708;46.94787;Sealed Areas;BERN
+Log_117;Koniztal;7.44248;46.90961;Forest;BERN
+Log_124;Barenplatz;7.44366;46.94814;Sealed Areas;BERN
+Log_126;Optingenstrasse;7.45045;46.95597;Sealed Areas;BERN
+Log_127;Breitenrainplatz;7.45415;46.95838;Vegetated Areas;BERN
+Log_128;Schosshaldefriedhof;7.47159;46.95341;Vegetated Areas;BERN
+Log_129;Laupenstrasse;7.43639;46.94734;Sealed Areas;BERN
+Log_134;Vorplatz Baerenpark;7.45974;46.94823;Sealed Areas;BERN
+Log_135;Optingenstrasse Sud;7.44938;46.95439;Sealed Areas;BERN
+Log_136;Optingenstrasse Nord;7.45081;46.95672;Sealed Areas;BERN
+Log_141;Viererfeld 2 (Schacht);7.43688;46.96271;Vegetated Areas;BERN
+Log_142;Viererfeld 3 (Strasse Sud);7.44009;46.96286;Vegetated Areas;BERN
+Log_143;Viererfeld 4 (Strasse Nord);7.44165;46.96523;Vegetated Areas;BERN
+Log_144;Viererfeld 5 (Mittelfeld);7.43481;46.96178;Vegetated Areas;BERN
+Log_151;Ostermundigen BareTower;7.48114;46.95563;Sealed Areas;BERN
+Log_152;Ostermundigen Moosweg;7.48807;46.95813;Sealed Areas;BERN
+Log_153;Ostermundigen Wegmuhlegassli;7.49371;46.95806;Sealed Areas;BERN
+Log_154;Ostermundigen Oberfeld;7.49792;46.9581;Vegetated Areas;BERN
+Log_155;Ostermundigen Milchstrasse;7.48201;46.96241;Sealed Areas;BERN
+Log_156;Ostermundigen Tiefenmosli;7.48411;46.94801;Sealed Areas;BERN
+Log_161;Ostermundigen Schermenweg;7.48052;46.95821;Sealed Areas;BERN
+Log_162;Ostermundigen Poststrasse;7.48222;46.95867;Sealed Areas;BERN
+Log_163;Ostermundigen YB Campus;46.966136;7.495357;Vegetated Areas;BERN
+Log_171;Postgasse Nord;7.4542;46.94886;Sealed Areas;BERN
+Log_401;Referenz 3m;7.58521;46.74982;Vegetated Areas;THUN
+Log_402;Referenz 2m;7.58521;46.74982;Vegetated Areas;THUN
+Log_403;Burgerwald;7.60025;46.75077;Forest;THUN
+Log_404;Stockhorn Arena;7.60521;46.74515;Sealed Areas;THUN
+Log_405;Thunerallmend;7.60421;46.75718;Vegetated Areas;THUN
+Log_406;KVA Parkplatz;7.60603;46.76261;Sealed Areas;THUN
+Log_408;Lerchenfeld;7.60234;46.76604;Vegetated Areas;THUN
+Log_409;Scheibenstrasse;7.62234;46.76011;Vegetated Areas;THUN
+Log_412;Innenstadt;7.62995;46.75875;Sealed Areas;THUN
+Log_413;Aarequai;7.63252;46.75683;Sealed Areas;THUN
+Log_414;Busbahnhof;7.62994;46.75517;Sealed Areas;THUN
+Log_416;ESP Thun Bahnhof;7.63395;46.7496;Sealed Areas;THUN
+Log_417;Baechihoelzli;7.64059;46.74835;Forest;THUN
+Log_418;Schadau;7.63853;46.74619;Sealed Areas;THUN
+Log_420;Hohmad;7.62247;46.74678;Sealed Areas;THUN
+Log_421;Neufeld;7.61728;46.73948;Sealed Areas;THUN
+Log_422;Strandbad;7.63322;46.74004;Sealed Areas;THUN
+Log_423;Schoren;7.61812;46.7316;Sealed Areas;THUN
+Log_424;Buchholz;7.60847;46.7309;Vegetated Areas;THUN
+Log_425;Gwatt;7.62173;46.71913;Vegetated Areas;THUN
+Log_426;Goldiwil;7.6639;46.76323;Vegetated Areas;THUN
+Log_427;Uttigenstrasse;7.61278;46.76287;Sealed Areas;THUN
+Log_428;Expo;7.61767;46.7577;Sealed Areas;THUN
+Log_429;SchoenauWestquartier;7.61156;46.7517;Sealed Areas;THUN
+Log_430;Sportcluster;7.6099;46.74637;Vegetated Areas;THUN
+Log_431;Seefeld;7.63001;46.74939;Vegetated Areas;THUN
+Log_432;Fluehli;7.63076;46.78555;Vegetated Areas;THUN
+Log_433;Zelgmatt;7.63956;46.77786;Sealed Areas;THUN
+Log_434;Unterdorfstrasse;7.63401;46.77766;Vegetated Areas;THUN
+Log_435;Saegeweg;7.62668;46.77383;Sealed Areas;THUN
+Log_436;Burgergut;7.61591;46.77195;Sealed Areas;THUN
+Log_437;Hodelmatte;7.6265;46.76882;Vegetated Areas;THUN
+Log_438;Schwaebis;7.6223;46.76616;Vegetated Areas;THUN
+Log_BD_30;Bahnhof;7.623;47.06;Sealed Areas;BURGDORF
+Log_BD_31;Steinhof;7.619;47.052;Sealed Areas;BURGDORF
+Log_BD_32;Dufourstrasse;7.616;47.064;Vegetated Areas;BURGDORF
+Log_BD_33;Gyrischachen;7.627;47.063;Sealed Areas;BURGDORF
+Log_BD_34;Altstadt;7.626;47.057;Sealed Areas;BURGDORF
+Log_BD_60C2;Bahnhof_Wind;7.621702;47.060338;Sealed Areas;BURGDORF
+Log_BD_60C3;Ischlag_Wind;7.629051;47.046886;Sealed Areas;BURGDORF
+Log_501;Seefeld;46.887108;8.24338;Water;SARNEN
+Log_502;Kantonsspital;46.889393;8.245972;Vegetated Areas;SARNEN
+Log_504;Ennetriederweg;46.892021;8.249906;Vegetated Areas;SARNEN
+Log_505;Klosterbezirk;46.892405;8.245727;Sealed Areas;SARNEN
+Log_509;Marktplatz;46.89618;8.248748;Sealed Areas;SARNEN
+Log_510;Buenten;46.898875;8.252714;Vegetated Areas;SARNEN
+Log_511;Industrie Nord;46.902668;8.252238;Sealed Areas;SARNEN
+Log_512;Bitzighofen;46.903895;8.246228;Sealed Areas;SARNEN
+Log_513;Mobil I (Krone);46.897835;8.246202;Sealed Areas;SARNEN
+Log_514;Mobil II (Industrie);46.901465;8.251111;Sealed Areas;SARNEN
+Log_LH002;Stadel;8.76542811;47.53290349;Sealed Areas;WINTERTHUR
+Log_LH003;Graben;8.73092833;47.49802875;Sealed Areas;WINTERTHUR
+Log_LH005;Eichliacker;8.711172737;47.48818074;Sealed Areas;WINTERTHUR
+Log_LH008;Stadlerstrasse;8.757885343;47.51241635;Sealed Areas;WINTERTHUR
+Log_LH011;Buelwiesen;8.763643936;47.4833031;Sealed Areas;WINTERTHUR
+Log_LH013;Kreiselfeld;8.769193685;47.50283506;Sealed Areas;WINTERTHUR
+Log_LH014;Pavillon;8.716186054;47.49549482;Vegetated Areas;WINTERTHUR
+Log_LH016;Taggenberg;8.684386136;47.52003209;Sealed Areas;WINTERTHUR
+Log_LH017;OSTLUFT_Veltheim;8.720378187;47.50814884;Sealed Areas;WINTERTHUR
+Log_LH018;Uebungsplatz;8.768768429;47.49612072;Forest;WINTERTHUR
+Log_LH019;Frohsinnareal;8.693005561;47.51007595;Sealed Areas;WINTERTHUR
+Log_LH020;Spielplatz;8.750033542;47.50119143;Vegetated Areas;WINTERTHUR
+Log_LH021;Schulhaus_Neuhegi;8.768083733;47.50440581;Sealed Areas;WINTERTHUR
+Log_LH022;Drehscheibe;8.71818872;47.49551797;Sealed Areas;WINTERTHUR
+Log_LH023;Garage;8.745985045;47.49810038;Vegetated Areas;WINTERTHUR
+Log_LH025;Schulhaus_Hegi;8.771475736;47.50490329;Sealed Areas;WINTERTHUR
+Log_LH026;Innerer_Lind;8.737566269;47.50278447;Vegetated Areas;WINTERTHUR
+Log_LH027;Supermarkt;8.771559655;47.50349746;Vegetated Areas;WINTERTHUR
+Log_LH029;Eulachpark;8.763450175;47.50503499;Vegetated Areas;WINTERTHUR
+Log_LH030;Geissacker;8.755393522;47.51242997;Sealed Areas;WINTERTHUR
+Log_LH033;Stadthaeuser;8.714779887;47.49522973;Vegetated Areas;WINTERTHUR
+Log_LH035;Ohrbuehl;8.766692946;47.49881968;Vegetated Areas;WINTERTHUR
+Log_LH039;Laterne;8.77161086;47.50222019;Vegetated Areas;WINTERTHUR
+Log_A10;Friedhofstrasse;8.47355;47.38224;Forest;ZUERICH
+Log_A7;Vulkanstrasse/Juchhof 1;8.47102;47.3969;Sealed Areas;ZUERICH
+Log_B12;Im Schaber;8.48135;47.37464;Sealed Areas;ZUERICH
+Log_B3;Hurdaeckerstrasse;8.47543;47.4145;Vegetated Areas;ZUERICH
+Log_B6;Paul-Pflueger-Strasse;8.47713;47.40136;Vegetated Areas;ZUERICH
+Log_B9;Stampfenbrunnenstrasse;8.47977;47.38783;Sealed Areas;ZUERICH
+Log_C11;Freilagerweg;8.48723;47.37981;Vegetated Areas;ZUERICH
+Log_C14;Saedlenweg;8.48921;47.36689;Vegetated Areas;ZUERICH
+Log_C5;Imbisbuehlstrasse;8.48354;47.40636;Sealed Areas;ZUERICH
+Log_C8;Vulkanstrasse;8.48505;47.39293;Sealed Areas;ZUERICH
+Log_D10;Buckhauserstrasse;8.49306;47.3844;Sealed Areas;ZUERICH
+Log_D13;Letzigraben;8.49375;47.37171;Sealed Areas;ZUERICH
+Log_D16;Rebeggstrasse;8.49706;47.35811;Vegetated Areas;ZUERICH
+Log_D4;Heizenholz;8.48797;47.41029;Sealed Areas;ZUERICH
+Log_D7;Fischerweg;8.49331;47.39878;Sealed Areas;ZUERICH
+Log_E12;Gutstrasse;8.50063;47.37576;Sealed Areas;ZUERICH
+Log_E15;Gruenmattstrasse;8.50357;47.36267;Vegetated Areas;ZUERICH
+Log_E6;Limmattalstrasse/Zwielplatz;8.49676;47.40238;Sealed Areas;ZUERICH
+Log_E9;Hohlstrasse;8.49728;47.38842;Sealed Areas;ZUERICH
+Log_F11;Bienenstrasse;8.50704;47.38136;Vegetated Areas;ZUERICH
+Log_F14;Doeltschiweg;8.50888;47.36757;Sealed Areas;ZUERICH
+Log_F17;Uetlibergstrasse;8.51096;47.35318;Sealed Areas;ZUERICH
+Log_F2;Furtalstrasse;8.501397;47.420849;Sealed Areas;ZUERICH
+Log_F5;Albert-Einstein-Strasse;8.50317;47.40823;Sealed Areas;ZUERICH
+Log_F8;Hardturmstrasse;8.50475;47.394;Sealed Areas;ZUERICH
+Log_G1;Horensteinstrasse;8.50745;47.42602;Vegetated Areas;ZUERICH
+Log_G10;Gleisbogen;8.51366;47.38639;Sealed Areas;ZUERICH
+Log_G13;Aemtlerstrasse/Kalkbreitestrasse;8.51576;47.37161;Sealed Areas;ZUERICH
+Log_G16;Uetlibergstrasse/Giesshuebelstrasse;8.51655;47.35902;Sealed Areas;ZUERICH
+Log_G4;Lerchenberg;8.50861;47.41262;Vegetated Areas;ZUERICH
+Log_G7;Appenzellerstrasse;8.5099;47.39899;Sealed Areas;ZUERICH
+Log_H12;Stauffacherstrasse;8.52163;47.37789;Sealed Areas;ZUERICH
+Log_H15;Giesshubelbruecke;8.52249;47.36358;Sealed Areas;ZUERICH
+Log_H18;Allmendstrasse;8.52539;47.35055;Sealed Areas;ZUERICH
+Log_H21;Balberstrasse;8.527;47.33679;Sealed Areas;ZUERICH
+Log_H3;Fronwaldstrasse;8.51548;47.41771;Vegetated Areas;ZUERICH
+Log_H9;Turbinenplatz;8.51769;47.38988;Sealed Areas;ZUERICH
+Log_I11;Roentgenstrasse;8.52803;47.38268;Sealed Areas;ZUERICH
+Log_I14;Sihlhoelzlistrasse;8.52882;47.36892;Sealed Areas;ZUERICH
+Log_I17;Bellariastrasse;8.53114;47.35477;Vegetated Areas;ZUERICH
+Log_I20;Auf der Egg;8.53231;47.34224;Vegetated Areas;ZUERICH
+Log_I5;Waldstrasse;8.52269;47.40927;Sealed Areas;ZUERICH
+Log_I8;Rosengartenstrasse;8.52592;47.395;Sealed Areas;ZUERICH
+Log_J10;Kloster-Fahr-Weg;8.53295;47.38731;Sealed Areas;ZUERICH
+Log_J13;Loewenstrasse/Nueschelerstrasse;8.53479;47.37336;Sealed Areas;ZUERICH
+Log_J16;Hafen Enge;8.53701;47.36037;Sealed Areas;ZUERICH
+Log_J22;Kilchbergstrasse;8.54017;47.33359;Sealed Areas;ZUERICH
+Log_J4;Binzmuehlestrasse;8.52868;47.41364;Sealed Areas;ZUERICH
+Log_J7;Kaeferholzstrasse;8.53197;47.40065;Sealed Areas;ZUERICH
+Log_K10;Stampfenbachstrasse;8.53979;47.387;Sealed Areas;ZUERICH
+Log_K12;Museumstrasse;8.54046;47.37865;Sealed Areas;ZUERICH
+Log_K15;Bootsanleger Buerkliplatz;8.54194;47.36564;Sealed Areas;ZUERICH
+Log_K3;Himmeristrasse;8.53585;47.41918;Sealed Areas;ZUERICH
+Log_K6;Hofwiesenstrasse (Nord);8.53749;47.40585;Vegetated Areas;ZUERICH
+Log_K9;Hofwiesenstrasse (süd);8.53856;47.39185;Sealed Areas;ZUERICH
+Log_L11;Stapferstrasse;8.54638;47.3836;Vegetated Areas;ZUERICH
+Log_L14;Raemistrasse;8.54853;47.3699;Sealed Areas;ZUERICH
+Log_L17;Hoeschgasse;8.55103;47.3566;Vegetated Areas;ZUERICH
+Log_L2;Seebacherstrasse;8.54064;47.42402;Vegetated Areas;ZUERICH
+Log_L5;Hofwiesenstrasse (Bhf Oerlikon);8.54212;47.41055;Sealed Areas;ZUERICH
+Log_L8;Irchelpark;8.54512;47.39723;Sealed Areas;ZUERICH
+Log_M1;Eichrainstrasse;8.546402605;47.42914682;Vegetated Areas;ZUERICH
+Log_M10;Germaniastrasse;8.55178;47.38841;Vegetated Areas;ZUERICH
+Log_M13;Pestalozzistrasse;8.55332;47.37507;Sealed Areas;ZUERICH
+Log_M16;Zollikerstrasse;8.55618;47.36169;Sealed Areas;ZUERICH
+Log_M4;Eisfeldstrasse;8.54842;47.41538;Vegetated Areas;ZUERICH
+Log_M7;Viktoriastrasse;8.55058;47.40146;Sealed Areas;ZUERICH
+Log_N12;Mittelbergsteig;8.56035;47.37996;Sealed Areas;ZUERICH
+Log_N15;Asylstrasse/Sonnenhaldenstrasse;8.56178;47.36663;Sealed Areas;ZUERICH
+Log_N18;Suedstrasse;8.56538;47.35263;Sealed Areas;ZUERICH
+Log_N3;Grubenackerstrasse;8.55429;47.41988;Sealed Areas;ZUERICH
+Log_N6;Funkwiesenstrasse;8.55691;47.40688;Vegetated Areas;ZUERICH
+Log_O14;Sonnenbergstrasse;8.5688;47.37096;Sealed Areas;ZUERICH
+Log_O17;Forchstrasse;8.57121;47.35821;Vegetated Areas;ZUERICH
+Log_O5;Unterfeldstrasse;8.56214;47.4117;Sealed Areas;ZUERICH
+Log_P13;Adlisbergstrasse;8.57492;47.37731;Sealed Areas;ZUERICH
+Log_P16;Witikonerstrasse;8.57485;47.36366;Sealed Areas;ZUERICH
+Log_P19;Witellikerstrasse;8.57754;47.34961;Sealed Areas;ZUERICH
+Log_P4;Opfikonstrasse;8.56823;47.4166;Sealed Areas;ZUERICH
+Log_P7;Huettenkopfstrasse;8.57024;47.40295;Vegetated Areas;ZUERICH
+Log_Q18;Drusbergstrasse;8.58447;47.35453;Sealed Areas;ZUERICH
+Log_Q6;Luegislandstrasse;8.576689;47.408441;Vegetated Areas;ZUERICH
+Log_R17;Lehfrauenweg;8.58996;47.35937;Sealed Areas;ZUERICH
+Log_R8;Stettbachstrasse;8.58385;47.39924;Vegetated Areas;ZUERICH
+Log_S16;In der Looren;8.59541;47.36465;Sealed Areas;ZUERICH
+Log_S7;Weibelackerweg;8.58973;47.40461;Vegetated Areas;ZUERICH
+Log_T18;Kienastenwiesweg;8.6038;47.35555;Sealed Areas;ZUERICH
+Log_ZH_Affoltern;Reckenholzstrasse;8.517825;47.427654;Vegetated Areas;ZUERICH
+Log_ZH_Fluntern;Ackermannstrasse;8.56568;47.37747;Sealed Areas;ZUERICH
+Log_ZH_Kaserne;Militaerstrasse;8.53086;47.37802;Sealed Areas;ZUERICH
+Log_ZH_Schimmelstrasse;Gerhardstrasse/Schimmelstrasse;8.52362;47.37091;Sealed Areas;ZUERICH
+Log_ZH_Wiedikon_Kollerwiese_1;Steinstrasse;8.5196;47.3685;Sealed Areas;ZUERICH
+Log_ZH_Wiedikon_Kollerwiese_2;Steinstrasse;8.51945;47.36871;Sealed Areas;ZUERICH
+Log_234;Riponne sud;6.632253;46.523297;Sealed Areas;LAUSANNE
+Log_235;Montbenon - reverbere;6.62583;46.519874;Vegetated Areas;LAUSANNE
+Log_236;Place du Tunnel sud;6.634384;46.525284;Sealed Areas;LAUSANNE
+Log_237;Riponne grenette;6.633174;46.524261;Vegetated Areas;LAUSANNE
+Log_238;Palais de Rumine nord;6.63372;46.523868;Vegetated Areas;LAUSANNE
+Log_239;Chalet-des-Enfants;6.666914;46.57556;Forest;LAUSANNE
+Log_240;Cimetiere de Montoie;6.605565;46.519696;Vegetated Areas;LAUSANNE
+Log_241;Av. du Rond-Point;6.628414;46.515355;Sealed Areas;LAUSANNE
+Log_242;Pont de Chailly;6.651154;46.526743;Sealed Areas;LAUSANNE
+Log_243;Place du Tunnel nord;6.634023;46.52631;Sealed Areas;LAUSANNE
+Log_478;Flon;6.627723;46.521198;Sealed Areas;LAUSANNE
+Log_479;Ouchy;6.626308;46.506902;Sealed Areas;LAUSANNE
+Log_481;Lion d'or;6.635731;46.519948;Sealed Areas;LAUSANNE

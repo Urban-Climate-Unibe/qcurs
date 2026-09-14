@@ -1,0 +1,26 @@
+Package: qcurbnet
+Type: Package
+Title: Quality Control for Urban Temperature Sensor Networks
+Version: 0.1.0
+Authors@R: person("Patrick", "Bigler", role = c("aut", "cre"),
+    email = "patrick.bigler@unibe.ch")
+Description: Rebuilt quality-control chain for urban low-cost temperature
+    networks (URBNET/URS campaigns), levels T_QC_1 to T_QC_8 plus optional
+    linear gap interpolation (T_QC_9). Standardised input handling via
+    qc_prepare_input(), documented flag codes (0 unobjected, N objected by
+    level N, 50/50+N interpolated), honest refusals where the data cannot
+    support a test, and corrected neighbour selection, thresholds and NA
+    handling relative to the published pipeline of Amini et al. (2026),
+    Scientific Data 13:658.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.1)
+Imports:
+    xts,
+    zoo,
+    geosphere,
+    stats,
+    utils
+Suggests:
+    testthat (>= 3.0.0)
+Config/roxygen2/version: 8.1.0
