@@ -1,22 +1,11 @@
 #' Temperature QC Level 5: climatic outliers
 #'
 #' Removes values beyond Q1 - m*IQR / Q3 + m*IQR of the station's own
-#' distribution per calendar month, all years pooled. The review established
-#' that this test is only meaningful on a multi-year record: on a
-#' single-season campaign the monthly quartiles describe the current sample
-#' instead of a climatology - and worse, they are computed from potentially
-#' contaminated data itself (Lausanne Log_240: the November bounds
-#' [18.8, 24.2] were learned entirely FROM the two-week indoor episode they
-#' were supposed to catch).
+#' distribution per calendar month, all years pooled.
 #'
-#' Two guards therefore apply: a real minimum sample size, and - by default -
-#' the requirement that a month's sample spans more than one calendar year. On
-#' campaign data the level then refuses every station-month AND SAYS SO, which
-#' is the honest outcome; set `require_multi_year = FALSE` to override.
-#' Fractional edge months (a campaign starting 31 May 22:00 leaves 12 "May"
-#' values, from which the published pipeline computed quartile bounds of two
-#' hours of night data and removed 8 perfectly normal readings) are handled by
-#' `min_n` alone.
+#' Two guards apply: a real minimum sample size, and - by default -
+#' the requirement that a month's sample spans more than one calendar year.
+#' set `require_multi_year = FALSE` to override.
 #'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param ext_lim_factor Multiplier m on the IQR (paper: 4, empirical).
@@ -47,24 +36,24 @@ T_QC_5_climatic_outliers <- function(input,
                                      verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
-  
+
   input <- qc_prepare_input(input, what = "temperature")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
-  
+
   #-------------------------------------------------------------------------------
   # validate the parameters, because the caller may set them freely
-  
+
   # the IQR multiplier must be positive
   if (!is.numeric(ext_lim_factor) || length(ext_lim_factor) != 1 || ext_lim_factor <= 0)
     stop("ext_lim_factor must be a positive number.")
   # a quartile estimate from fewer than ~30 values is noise, not a climatology
   if (!is.numeric(min_n) || length(min_n) != 1 || min_n < 30)
     stop("min_n must be at least 30.")
-  
+
   #-------------------------------------------------------------------------------
   # Perform QC Level 5
-  
+
   # plain numeric matrix of the values (time in rows, stations in columns)
   X <- coredata(x)
   # plain numeric matrix of the flags, same shape
@@ -79,7 +68,7 @@ T_QC_5_climatic_outliers <- function(input,
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
   # which station-months were refused, so a zero-flag run is not mistaken for a clean one
   refused <- character(0)
-  
+
   # iterate over all stations (columns): a climatology is site-specific
   for (s in colnames(X)) {
     # extract data vector of this station
@@ -107,12 +96,12 @@ T_QC_5_climatic_outliers <- function(input,
       hi <- q[2] + ext_lim_factor * iqr
       # strictly outside ("exceed", per the paper wording), this month only
       hit <- mon == mm & !is.na(v) & (v < lo | v > hi)
-      
+
       # combine the verdict with THIS station's column only
       mask <- hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
       # how many cells this level objects to in this station-month
       n_found <- sum(mask)
-      
+
       # apply only if something was found
       if (n_found > 0) {
         # blank the outliers so later levels never see them
@@ -125,16 +114,16 @@ T_QC_5_climatic_outliers <- function(input,
       }
     }
   }
-  
+
   # write the matrices back into the xts shells, keeping index and column names
   if (n_total > 0) {
     x[]   <- X
     flg[] <- previous_flag
   }
-  
+
   #-------------------------------------------------------------------------------
   # report and hand the pair on to the next level
-  
+
   # report so a zero-hit run is visibly a run, not a skip - and name the refusals
   if (isTRUE(verbose)) {
     message(sprintf("T5 climatic outliers (m=%g): %d flagged, %d station-months refused",
@@ -144,7 +133,7 @@ T_QC_5_climatic_outliers <- function(input,
     else if (length(refused) > 12)
       message("  refused (first 12): ", paste(utils::head(refused, 12), collapse = ", "), ", ...")
   }
-  
+
   # write the updated matrices back and append this level under its own name
   input$qc_data                      <- x
   input$qc_data_flagged              <- flg

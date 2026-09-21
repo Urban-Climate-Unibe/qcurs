@@ -1,21 +1,13 @@
 #' Temperature QC Level 8: diurnal range collapse
 #'
-#' NEW level, no counterpart in the published pipeline - it closes the gap the
-#' review demonstrated: a sensor reading indoors (or otherwise decoupled from
-#' the atmosphere) produces values that pass every classic test - physically
-#' plausible, locally smooth, varying - and at stations without
-#' landuse-compatible neighbours it is also spatially unchecked. Lausanne
-#' Log_240 ran two weeks at 21-23 degC against a network at 4 degC and
-#' received zero spatial flags. Its giveaway was trivial: a diurnal amplitude
-#' of 0.5 K against a station median of 11.8 K.
+#' A sensor reading indoors (or otherwise decoupled from
+#' the atmosphere) produces values that might pass every classic test - physically
+#' plausible, locally smooth, varying and at stations without
+#' landuse-compatible neighbours it is also spatially unchecked.
 #'
 #' This level removes days whose diurnal range falls below a fraction of the
 #' station's OWN median range, for a minimum number of CONSECUTIVE days. It
-#' needs no neighbours and therefore also covers isolated stations. Single
-#' calm fog days survive via the consecutive-days requirement and the low
-#' fraction; a genuine multi-day inversion with the whole network flat can
-#' still trigger it - which is why the verdict means "suspicious", exactly
-#' like the spatial level, and why the fraction is deliberately low.
+#' needs no neighbours and therefore also covers isolated stations
 #'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param range_frac Threshold as a fraction of the station median range.
@@ -46,14 +38,14 @@ T_QC_8_diurnal_range <- function(input,
                                  verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
-  
+
   input <- qc_prepare_input(input, what = "temperature")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
-  
+
   #-------------------------------------------------------------------------------
   # validate the parameters, because the caller may set them freely
-  
+
   # the fraction must lie strictly between 0 and 1
   if (!is.numeric(range_frac) || length(range_frac) != 1 || range_frac <= 0 || range_frac >= 1)
     stop("range_frac must be a fraction between 0 and 1.")
@@ -66,10 +58,10 @@ T_QC_8_diurnal_range <- function(input,
   # the reference median needs a real sample
   if (!is.numeric(min_reference_days) || min_reference_days < 3)
     stop("min_reference_days must be at least 3.")
-  
+
   #-------------------------------------------------------------------------------
   # Perform QC Level 8
-  
+
   # plain numeric matrix of the values (time in rows, stations in columns)
   X <- coredata(x)
   # plain numeric matrix of the flags, same shape
@@ -82,7 +74,7 @@ T_QC_8_diurnal_range <- function(input,
   n_total <- 0
   # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
-  
+
   # iterate over all stations (columns)
   for (s in colnames(X)) {
     # extract data vector of this station
@@ -117,12 +109,12 @@ T_QC_8_diurnal_range <- function(input,
     if (!length(flag_days)) next
     # every valid value on the objected days
     hit <- day %in% days[flag_days] & !is.na(v)
-    
+
     # combine the verdict with THIS station's column only
     mask <- hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
     # how many cells this level objects to at this station
     n_found <- sum(mask)
-    
+
     # apply only if something was found
     if (n_found > 0) {
       # blank the collapsed days so later levels never see them
@@ -134,21 +126,21 @@ T_QC_8_diurnal_range <- function(input,
       n_total <- n_total + n_found
     }
   }
-  
+
   # write the matrices back into the xts shells, keeping index and column names
   if (n_total > 0) {
     x[]   <- X
     flg[] <- previous_flag
   }
-  
+
   #-------------------------------------------------------------------------------
   # report and hand the pair on to the next level
-  
+
   # report so a zero-hit run is visibly a run, not a skip
   if (isTRUE(verbose))
     message(sprintf("T8 diurnal range collapse (< %g of station median, >= %d days): %d flagged",
                     range_frac, min_consecutive_days, n_total))
-  
+
   # write the updated matrices back and append this level under its own name
   input$qc_data                  <- x
   input$qc_data_flagged          <- flg

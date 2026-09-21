@@ -2,30 +2,7 @@
 #'
 #' Implements equations (1)-(4) of Amini et al. (2026): a value is removed when
 #' it deviates from the Gaussian-distance- and landuse-weighted consensus of
-#' its neighbours by more than max(k * sigma', delta). Three review findings
-#' are corrected here:
-#'
-#' 1. The k-nearest cap is applied AMONG LANDUSE-COMPATIBLE stations, after
-#'    the landuse masking. The published order (cap first, mask second) let
-#'    zero-weight stations occupy the k slots and displace compatible ones -
-#'    Lausanne Log_240 kept 1 of its 3 compatible neighbours that way, was
-#'    never evaluated, and a two-week 18 K indoor episode passed unflagged.
-#' 2. There is NO lower gate on sigma. The published code additionally
-#'    required k*sigma > 0.5 and thereby switched the test off exactly when
-#'    the neighbours agreed best (the same episode lost another 27 percent to
-#'    it). The absolute floor delta alone protects against over-flagging, as
-#'    in the paper's equation (4).
-#' 3. Both landuse spellings "Forest" and "Forests" count as forest, because
-#'    metadata and published code disagree and the mismatch silently isolates
-#'    forest stations.
-#'
-#' sigma_d (the Gaussian bandwidth) is the median pairwise distance over the
-#' stations PRESENT IN THE DATA - a deliberate, documented divergence from the
-#' original, which used all metadata rows including stations without data.
-#'
-#' Stations that never reach the minimum number of compatible valid neighbours
-#' are listed in `qc_info$t6_spatial_consistency$never_evaluated`. A station
-#' this test cannot see is a coverage statement, not a clean bill.
+#' its neighbours by more than max(k * sigma', delta).
 #'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param metadata Data frame with columns ID, LAT, LON, Landuse. Stations are
@@ -63,24 +40,29 @@ T_QC_6_spatial_consistency <- function(input,
                                        verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
-  
+
   input <- qc_prepare_input(input, what = "temperature")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
   # resolve the mode choice against the two allowed values
   landuse_mode <- match.arg(landuse_mode)
-  
+
   #-------------------------------------------------------------------------------
   # validate the parameters and the metadata, because misaligned metadata
   # would put the objections on the wrong stations
-  
+
   # the multiplier and the floor must be positive
-  if (!is.numeric(k_sigma) || k_sigma <= 0) stop("k_sigma must be a positive number.")
-  if (!is.numeric(abs_floor) || abs_floor <= 0) stop("abs_floor must be a positive number of Kelvin.")
-  if (!is.numeric(radius_m) || radius_m <= 0) stop("radius_m must be a positive distance in metres.")
-  if (!is.numeric(min_neighbours) || min_neighbours < 1) stop("min_neighbours must be at least 1.")
+  if (!is.numeric(k_sigma) || k_sigma <= 0)
+    stop("k_sigma must be a positive number.")
+  if (!is.numeric(abs_floor) || abs_floor <= 0)
+    stop("abs_floor must be a positive number of Kelvin.")
+  if (!is.numeric(radius_m) || radius_m <= 0)
+    stop("radius_m must be a positive distance in metres.")
+  if (!is.numeric(min_neighbours) || min_neighbours < 1)
+    stop("min_neighbours must be at least 1.")
   if (!is.numeric(k_neighbours) || k_neighbours < min_neighbours)
     stop("k_neighbours must be at least min_neighbours.")
+
   # the metadata are required for this level
   if (missing(metadata) || is.null(metadata))
     stop("This level needs the metadata (ID, LAT, LON, Landuse).")
@@ -95,6 +77,7 @@ T_QC_6_spatial_consistency <- function(input,
     stop("Metadata LAT/LON must be numeric and complete.")
   # duplicated IDs would make the match ambiguous
   if (anyDuplicated(md$ID)) stop("Metadata contains duplicated IDs.")
+
   # only stations present in BOTH the data and the metadata can be used
   ids <- intersect(colnames(x), md$ID)
   # stations in the data without metadata can never be evaluated - say so once
@@ -117,10 +100,10 @@ T_QC_6_spatial_consistency <- function(input,
   }
   # number of stations actually used
   ns <- length(ids)
-  
+
   #-------------------------------------------------------------------------------
   # build the static weight matrix: distance, landuse, THEN the k-nearest cap
-  
+
   # pairwise distance matrix in metres
   D <- matrix(0, ns, ns, dimnames = list(ids, ids))
   for (i in seq_len(ns)) for (j in seq_len(ns))
@@ -131,7 +114,7 @@ T_QC_6_spatial_consistency <- function(input,
   sigma_d <- stats::median(D, na.rm = TRUE)
   # equation (2), distance part; the diagonal becomes weight 0
   W <- exp(-(D^2) / (2 * sigma_d^2)); W[is.na(W)] <- 0
-  
+
   # the green classes - BOTH forest spellings, see header
   veg <- c("Vegetated Areas", "Forest", "Forests")
   # landuse per station as plain character
@@ -147,7 +130,7 @@ T_QC_6_spatial_consistency <- function(input,
   }))
   # combine distance and landuse
   W <- W * LU
-  
+
   # the k-nearest cap, in the FIXED order: among the compatible stations only
   for (i in seq_len(ns)) {
     # candidates = landuse-compatible AND within the radius
@@ -161,10 +144,10 @@ T_QC_6_spatial_consistency <- function(input,
   }
   # belt and braces: nothing beyond the radius ever keeps weight
   W[!is.na(D) & D > radius_m] <- 0
-  
+
   #-------------------------------------------------------------------------------
   # Perform QC Level 6
-  
+
   # plain numeric matrix of the values (time in rows, stations in columns)
   X <- coredata(x)
   # plain numeric matrix of the flags, same shape
@@ -175,7 +158,7 @@ T_QC_6_spatial_consistency <- function(input,
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
   # track the stations this test never reached - a blind spot is not a clean bill
   never_evaluated <- stats::setNames(rep(TRUE, ns), ids)
-  
+
   # iterate over all time steps: the weights are static, the data are not
   for (t in seq_len(nrow(X))) {
     # this time step across the used stations
@@ -209,13 +192,13 @@ T_QC_6_spatial_consistency <- function(input,
     sig <- sqrt(rowSums((W * vmm) * (Xm - Mm)^2, na.rm = TRUE) / pmax(wsum, 1e-12))
     # equation (4), pure: |v - mu| > max(k*sigma, delta) - NO extra gate
     hit <- judged & (abs(v - mu) > pmax(k_sigma * sig, abs_floor))
-    
+
     # combine the verdict with THIS time step's flag row, restricted to the
     # used stations: hit is a vector over ids, so it must meet a vector
     mask <- hit & (is.na(previous_flag[t, ids]) | previous_flag[t, ids] == 0)
     # which stations are objected to at this time step
     n_found <- sum(mask, na.rm = TRUE)
-    
+
     # apply only if something was found
     if (n_found > 0) {
       # the station names behind the mask
@@ -229,16 +212,16 @@ T_QC_6_spatial_consistency <- function(input,
       n_total <- n_total + n_found
     }
   }
-  
+
   # write the matrices back into the xts shells, keeping index and column names
   if (n_total > 0) {
     x[]   <- X
     flg[] <- previous_flag
   }
-  
+
   #-------------------------------------------------------------------------------
   # report and hand the pair on to the next level
-  
+
   # report so a zero-hit run is visibly a run, not a skip - and name the blind spots
   if (isTRUE(verbose)) {
     message(sprintf("T6 spatial consistency (max(%g*sigma, %g K), k=%d after landuse): %d flagged",
@@ -247,7 +230,7 @@ T_QC_6_spatial_consistency <- function(input,
       message("  never evaluated (insufficient compatible neighbours): ",
               paste(names(never_evaluated)[never_evaluated], collapse = ", "))
   }
-  
+
   # write the updated matrices back and append this level under its own name
   input$qc_data                        <- x
   input$qc_data_flagged                <- flg

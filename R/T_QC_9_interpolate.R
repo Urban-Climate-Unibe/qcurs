@@ -1,12 +1,7 @@
 #' Temperature QC Level 9 (optional): linear gap interpolation
 #'
-#' NOT a quality test - this level ADDS values. It linearly interpolates gaps
-#' of at most `maxgap` steps. Keep it optional and OFF by default in any
-#' runner, because the underlying method paper states that QC only flags and
-#' never alters the original data; whoever publishes the interpolated series
-#' must say so and must document the codes (Bern URS: 82'323 interpolated
-#' values = 7.4 percent of all cells, more than 11 times all QC flags
-#' combined).
+#' this level ADDS values. It linearly interpolates gaps
+#' of at most `maxgap` steps.
 #'
 #' Flag codes written here: `base_code` (50) for a filled plain gap, and
 #' `base_code + N` for a value that level N had removed and this level

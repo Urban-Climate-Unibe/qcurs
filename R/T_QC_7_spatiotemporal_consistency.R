@@ -2,19 +2,6 @@
 #'
 #' Removes values that are simultaneously extreme in space (against ALL nearby
 #' stations) and in time (against their own preceding and following steps).
-#' Kept from the reviewed _pbi variant: symmetric thresholds via
-#' quantile(abs(diff)) in both temporal branches (the original mixed a signed
-#' and a positive-only quantile, 20 percent apart on the same data), and the
-#' requirement of a FULL neighbourhood (under gaps the original degenerated to
-#' "the one available neighbour is off"). Two repairs on top: neighbours are
-#' searched among stations that exist in the DATA (the inherited metadata-only
-#' search crashed with subscript out of bounds), and skipped stations are
-#' summarised once at the end instead of being silently dropped.
-#'
-#' The threshold default follows the published code (0.99); the paper states
-#' the 99.99th percentile. On the reviewed data the choice is irrelevant - the
-#' conjunction of spatial AND temporal extremeness binds, not the percentile
-#' (0 false positives on 104k clean synthetic values either way).
 #'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param metadata Data frame with columns ID, LAT, LON.
@@ -46,14 +33,14 @@ T_QC_7_spatiotemporal_consistency <- function(input,
                                               verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
-  
+
   input <- qc_prepare_input(input, what = "temperature")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
-  
+
   #-------------------------------------------------------------------------------
   # validate the parameters and the metadata
-  
+
   # the quantile must be a probability above 0.5: both tails are derived from it
   if (!is.numeric(threshold) || length(threshold) != 1 || threshold <= 0.5 || threshold >= 1)
     stop("threshold must be a probability between 0.5 and 1.")
@@ -74,24 +61,24 @@ T_QC_7_spatiotemporal_consistency <- function(input,
   md <- md[match(ids, md$ID), ]
   # number of stations actually usable
   ns <- length(ids)
-  
+
   #-------------------------------------------------------------------------------
   # pairwise distances once, they do not change over time
-  
+
   # pairwise distance matrix in metres
   D <- matrix(0, ns, ns, dimnames = list(ids, ids))
   for (i in seq_len(ns)) for (j in seq_len(ns))
     D[i, j] <- geosphere::distHaversine(c(md$LON[i], md$LAT[i]), c(md$LON[j], md$LAT[j]))
   # a station is not its own neighbour
   diag(D) <- NA
-  
+
   # internal shift helpers, so this file needs no dplyr dependency
   shift_back <- function(v) c(NA, v[-length(v)])   # the previous value at each position
   shift_fwd  <- function(v) c(v[-1], NA)           # the next value at each position
-  
+
   #-------------------------------------------------------------------------------
   # Perform QC Level 7
-  
+
   # plain numeric matrix of the values (time in rows, stations in columns)
   X <- coredata(x)
   # plain numeric matrix of the flags, same shape
@@ -102,7 +89,7 @@ T_QC_7_spatiotemporal_consistency <- function(input,
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
   # stations without a full neighbourhood, so a zero-flag run is not a clean bill
   skipped <- character(0)
-  
+
   # iterate over all target stations that have metadata
   for (s in ids) {
     # distances from this target station to everyone else
@@ -118,7 +105,7 @@ T_QC_7_spatiotemporal_consistency <- function(input,
     nb <- nb[seq_len(n_neighbours)]
     # extract data vector of this station (already cleaned by the earlier levels)
     v <- X[, s]
-    
+
     # target minus each neighbour, one column per neighbour
     dif_nb <- sweep(X[, nb, drop = FALSE], 1, v, FUN = function(a, b) b - a)
     # per-neighbour upper bound of that difference distribution
@@ -134,7 +121,7 @@ T_QC_7_spatiotemporal_consistency <- function(input,
     # spatial criterion: the value exists, the FULL neighbourhood is available,
     # and the value is extreme against ALL of it
     spatial <- !is.na(v) & n_avail >= n_neighbours & n_ex >= n_avail
-    
+
     # change from the previous step
     d_pre <- v - shift_back(v)
     # change to the next step
@@ -145,14 +132,14 @@ T_QC_7_spatiotemporal_consistency <- function(input,
     q_nex <- stats::quantile(abs(d_nex), threshold, na.rm = TRUE)
     # temporal criterion: both changes exist and both are extreme
     temporal <- !is.na(d_pre) & !is.na(d_nex) & abs(d_pre) > q_pre & abs(d_nex) > q_nex
-    
+
     # extreme in space AND in time: the objection condition
     hit <- spatial & temporal
     # combine the verdict with THIS station's column only
     mask <- hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
     # how many cells this level objects to at this station
     n_found <- sum(mask)
-    
+
     # apply only if something was found
     if (n_found > 0) {
       # blank the values so later levels never see them
@@ -164,16 +151,16 @@ T_QC_7_spatiotemporal_consistency <- function(input,
       n_total <- n_total + n_found
     }
   }
-  
+
   # write the matrices back into the xts shells, keeping index and column names
   if (n_total > 0) {
     x[]   <- X
     flg[] <- previous_flag
   }
-  
+
   #-------------------------------------------------------------------------------
   # report and hand the pair on to the next level
-  
+
   # report so a zero-hit run is visibly a run, not a skip - one summary line, no spam
   if (isTRUE(verbose)) {
     message(sprintf("T7 spatiotemporal (q=%g, %d neighbours <= %g m): %d flagged",
@@ -181,7 +168,7 @@ T_QC_7_spatiotemporal_consistency <- function(input,
     if (length(skipped) > 0)
       message("  skipped (too few neighbours in radius): ", paste(skipped, collapse = ", "))
   }
-  
+
   # write the updated matrices back and append this level under its own name
   input$qc_data                   <- x
   input$qc_data_flagged           <- flg
