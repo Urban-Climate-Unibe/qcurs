@@ -82,9 +82,23 @@ RH_QC_7_dewpoint_consistency <- function(input,
   need <- c("ID", "LAT", "LON", "Landuse")
   if (!all(need %in% names(md)))
     stop(sprintf("Metadata must contain the columns %s.", paste(need, collapse = ", ")))
+  # coordinates must be numeric and present (as in T6): a character column dies
+  # deep inside geosphere, and an NA would silently zero the station's weights
+  if (!is.numeric(md$LAT) || !is.numeric(md$LON) || anyNA(md$LAT) || anyNA(md$LON))
+    stop("Metadata LAT/LON must be numeric and complete.")
   if (anyDuplicated(md$ID)) stop("Metadata contains duplicated IDs.")
   # usable stations need humidity, temperature AND metadata
   ids <- intersect(intersect(colnames(x), colnames(tx)), md$ID)
+  # stations this level can never reach: no metadata row, or no temperature
+  # twin - warn once (as in T6) instead of dropping them silently
+  no_meta <- setdiff(colnames(x), md$ID)
+  if (length(no_meta) > 0)
+    warning(sprintf("No metadata for: %s - these stations cannot be evaluated by this level.",
+                    paste(no_meta, collapse = ", ")))
+  no_twin <- setdiff(setdiff(colnames(x), no_meta), colnames(tx))
+  if (length(no_twin) > 0)
+    warning(sprintf("No temperature twin for: %s - these stations cannot be evaluated by this level.",
+                    paste(no_twin, collapse = ", ")))
   # a consensus over fewer than 3 stations is not a network statement:
   # refuse audibly and hand the pair back UNCHANGED, in the standard shape
   if (length(ids) < 3) {

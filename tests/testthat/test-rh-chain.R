@@ -86,6 +86,24 @@ test_that("RH6 and RH7 accept the temperature chain result and refuse misalignme
   r <- RH_QC_6_decoupling(f$rh, temperature = t_res, verbose = FALSE)
   expect_true("rh6_decoupling" %in% names(r$qc_info))
   expect_error(RH_QC_6_decoupling(f$rh, temperature = f$tt[1:100, ]), "Row mismatch")
-  r7 <- RH_QC_7_dewpoint_consistency(f$rh, temperature = f$tt, metadata = f$md[1:2, ], verbose = FALSE)
+  r7 <- suppressWarnings(
+    RH_QC_7_dewpoint_consistency(f$rh, temperature = f$tt, metadata = f$md[1:2, ], verbose = FALSE))
   expect_true(r7$qc_info$rh7_dewpoint_consistency$skipped)   # <3 stations: honest skip
+})
+
+test_that("RH7 validates the metadata and names its blind spots, like T6", {
+  f <- rh_fixture()
+  # broken coordinates abort with a clear message instead of dying in geosphere
+  md_na <- f$md; md_na$LAT[2] <- NA
+  expect_error(RH_QC_7_dewpoint_consistency(f$rh, temperature = f$tt, metadata = md_na,
+                                            verbose = FALSE),
+               "numeric and complete")
+  # a data station without a metadata row is warned about, not dropped silently
+  expect_warning(RH_QC_7_dewpoint_consistency(f$rh, temperature = f$tt, metadata = f$md[1:3, ],
+                                              verbose = FALSE),
+                 "No metadata for: S4")
+  # a data station without a temperature twin is warned about as well
+  expect_warning(RH_QC_7_dewpoint_consistency(f$rh, temperature = f$tt[, 1:3], metadata = f$md,
+                                              verbose = FALSE),
+                 "No temperature twin for: S4")
 })
