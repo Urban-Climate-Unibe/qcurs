@@ -10,7 +10,6 @@ RH_QC_6_decoupling(
   decouple_r = -0.3,
   decouple_trange = 3,
   decouple_min_n = 60,
-  flag_code = 6,
   verbose = TRUE
 )
 }
@@ -28,8 +27,6 @@ without a temperature twin are skipped and reported.}
 \item{decouple_trange}{Minimum diurnal temperature range in Kelvin.}
 
 \item{decouple_min_n}{Minimum valid T/RH pairs per day.}
-
-\item{flag_code}{QC-code written by this level. Here, default is 6.}
 
 \item{verbose}{Report the tally.}
 }

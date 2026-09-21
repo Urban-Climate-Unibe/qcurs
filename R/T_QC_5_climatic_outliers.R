@@ -12,7 +12,6 @@
 #' @param min_n Minimum valid values a station-month needs to be judged.
 #' @param require_multi_year Only judge a station-month whose sample spans
 #'   more than one calendar year.
-#' @param flag_code QC-code written by this level. Here, default is 5.
 #' @param verbose Report the tally and the refusals.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info. The
@@ -32,7 +31,6 @@ T_QC_5_climatic_outliers <- function(input,
                                      ext_lim_factor = 4,
                                      min_n = 300,
                                      require_multi_year = TRUE,
-                                     flag_code = 5,
                                      verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
@@ -106,8 +104,8 @@ T_QC_5_climatic_outliers <- function(input,
       if (n_found > 0) {
         # blank the outliers so later levels never see them
         X[mask, s] <- NA
-        # record this level's code
-        previous_flag[mask, s] <- flag_code
+        # record this level's code (5 = level 5, fixed by convention)
+        previous_flag[mask, s] <- 5
         # add the number of new flags to the counters
         n_station[s] <- n_station[s] + n_found
         n_total <- n_total + n_found

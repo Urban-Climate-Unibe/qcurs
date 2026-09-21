@@ -10,7 +10,6 @@ T_QC_7_spatiotemporal_consistency(
   radius_m = 2500,
   n_neighbours = 5,
   threshold = 0.99,
-  flag_code = 7,
   verbose = TRUE
 )
 }
@@ -25,8 +24,6 @@ T_QC_7_spatiotemporal_consistency(
 
 \item{threshold}{Quantile for both the spatial and the temporal criteria.}
 
-\item{flag_code}{QC-code written by this level. Here, default is 7.}
-
 \item{verbose}{Report the tally and the skipped stations.}
 }
 \value{
@@ -37,20 +34,6 @@ The chain list with qc_data, qc_data_flagged and qc_info. Stations
 \description{
 Removes values that are simultaneously extreme in space (against ALL nearby
 stations) and in time (against their own preceding and following steps).
-Kept from the reviewed _pbi variant: symmetric thresholds via
-quantile(abs(diff)) in both temporal branches (the original mixed a signed
-and a positive-only quantile, 20 percent apart on the same data), and the
-requirement of a FULL neighbourhood (under gaps the original degenerated to
-"the one available neighbour is off"). Two repairs on top: neighbours are
-searched among stations that exist in the DATA (the inherited metadata-only
-search crashed with subscript out of bounds), and skipped stations are
-summarised once at the end instead of being silently dropped.
-}
-\details{
-The threshold default follows the published code (0.99); the paper states
-the 99.99th percentile. On the reviewed data the choice is irrelevant - the
-conjunction of spatial AND temporal extremeness binds, not the percentile
-(0 false positives on 104k clean synthetic values either way).
 }
 \examples{
 \dontrun{

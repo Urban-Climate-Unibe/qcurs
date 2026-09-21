@@ -45,8 +45,10 @@ qc_as_xts <- function(x,
     stop("x needs a time column and at least one logger column.")
   # every column needs a unique, non-empty name
   nm <- names(x)
-  if (anyNA(nm) || any(!nzchar(nm)) || anyDuplicated(nm))
-    stop(sprintf("Every column needs a unique, non-empty name. Duplicated: %s",
+  if (anyNA(nm) || any(!nzchar(nm)))
+    stop("Every column needs a non-empty name.")
+  if (anyDuplicated(nm))
+    stop(sprintf("Every column needs a unique name. Duplicated: %s",
                  paste(unique(nm[duplicated(nm)]), collapse = ", ")))
 
   #-------------------------------------------------------------------------------
@@ -79,14 +81,14 @@ qc_as_xts <- function(x,
   tv <- x[[tc]]
   # true/false
   was_posixct <- inherits(tv, "POSIXct")
-  if (!was_posixct) {
+  if (!was_posixct)
     tv <- as.POSIXct(as.character(tv), format = time_format, tz = tz)
-    # every stamp must parse; name the first one that does not
-    if (anyNA(tv)) {
-      bad <- which(is.na(tv))
-      stop(sprintf("%d time stamp(s) do not match time_format '%s' (first: row %d, '%s').",
-                   length(bad), time_format, bad[1], as.character(x[[tc]][bad[1]])))
-    }
+  # every stamp must exist - a POSIXct column can carry NA too, so this check
+  # sits OUTSIDE the parsing branch; name the first one that is missing
+  if (anyNA(tv)) {
+    bad <- which(is.na(tv))
+    stop(sprintf("%d time stamp(s) missing or not matching time_format '%s' (first: row %d, '%s').",
+                 length(bad), time_format, bad[1], as.character(x[[tc]][bad[1]])))
   }
   # duplicated stamps are always an error.
   if (anyDuplicated(tv)) {

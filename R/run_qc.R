@@ -55,7 +55,7 @@ run_qc_temperature <- function(input,
   input <- step(T_QC_1_gross_error,           "t1")
   input <- step(T_QC_2_out_of_range,          "t2")
   input <- step(T_QC_3_time_consistency,      "t3")
-  input <- step(T_QC_4_temporal_persistence,  "t4")
+  input <- step(T_QC_4_stuck_values,          "t4")
   input <- step(T_QC_5_climatic_outliers,     "t5")
   # the spatial levels need the metadata; without them, skip audibly
   if (!is.null(metadata)) {

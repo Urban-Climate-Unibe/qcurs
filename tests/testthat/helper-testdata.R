@@ -8,6 +8,15 @@ biel_tidy <- function() {
                   sep = ";", dec = ".", stringsAsFactors = FALSE)
 }
 
+# the tidy file pivoted to wide IN THE SCRIPT, as qc_as_xts() expects:
+# one time column plus one column per logger
+biel_wide <- function() {
+  wide <- stats::reshape(biel_tidy(), idvar = "time", timevar = "station", direction = "wide")
+  names(wide) <- sub("^temperature\\.", "", names(wide))
+  rownames(wide) <- NULL
+  wide
+}
+
 biel_meta <- function() {
   # Read via readLines + iconv rather than a UTF-8 connection: read.csv() on a
   # UTF-8 connection dies with "invalid input" under a C locale, which is what
@@ -30,12 +39,12 @@ biel_manifest <- function() {
 .chain_cache <- new.env(parent = emptyenv())
 biel_chain <- function() {
   if (is.null(.chain_cache$res)) {
-    x <- qc_as_xts(biel_tidy(), verbose = FALSE)
+    x <- qc_as_xts(biel_wide(), time_col = "time", verbose = FALSE)
     md <- biel_meta()
     res <- T_QC_1_gross_error(x, verbose = FALSE)
     res <- T_QC_2_out_of_range(res, verbose = FALSE)
     res <- T_QC_3_time_consistency(res, verbose = FALSE)
-    res <- T_QC_4_temporal_persistence(res, verbose = FALSE)
+    res <- T_QC_4_stuck_values(res, verbose = FALSE)
     res <- T_QC_5_climatic_outliers(res, verbose = FALSE)
     res <- T_QC_6_spatial_consistency(res, metadata = md, verbose = FALSE)
     res <- T_QC_7_spatiotemporal_consistency(res, metadata = md, verbose = FALSE)

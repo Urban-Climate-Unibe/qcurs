@@ -13,7 +13,6 @@
 #' @param rh_min Lower physical bound in percent.
 #' @param rh_max Upper tolerance bound in percent; values in (100, rh_max]
 #'   are clamped to 100, values above are objected to.
-#' @param flag_code QC-code written by this level. Here, default is 2.
 #' @param verbose Report the tally.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
@@ -29,7 +28,6 @@
 RH_QC_2_range <- function(input,
                           rh_min = 0,
                           rh_max = 105,
-                          flag_code = 2,
                           verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
@@ -75,8 +73,8 @@ RH_QC_2_range <- function(input,
   if (n_total > 0 || n_clamped > 0) {
     # blank the impossible values so later levels never see them
     X[mask] <- NA
-    # record this level's code
-    previous_flag[mask] <- flag_code
+    # record this level's code (2 = level 2, fixed by convention)
+    previous_flag[mask] <- 2
     # write the matrices back into the xts shells, keeping index and column names
     x[]   <- X
     flg[] <- previous_flag

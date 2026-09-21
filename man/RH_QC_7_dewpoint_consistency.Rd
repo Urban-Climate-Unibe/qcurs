@@ -13,7 +13,6 @@ RH_QC_7_dewpoint_consistency(
   td_radius_m = 3000,
   td_k_neighbours = 5,
   td_min_neighbours = 2,
-  flag_code = 7,
   verbose = TRUE
 )
 }
@@ -35,8 +34,6 @@ index, or the whole result list of the temperature chain (its cleaned
 \item{td_k_neighbours}{At most this many nearest COMPATIBLE neighbours.}
 
 \item{td_min_neighbours}{Minimum valid neighbours to judge at all.}
-
-\item{flag_code}{QC-code written by this level. Here, default is 7.}
 
 \item{verbose}{Report the tally and the never-evaluated stations.}
 }

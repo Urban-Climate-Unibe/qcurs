@@ -21,7 +21,6 @@
 #'   (healthy days are strongly negative).
 #' @param decouple_trange Minimum diurnal temperature range in Kelvin.
 #' @param decouple_min_n Minimum valid T/RH pairs per day.
-#' @param flag_code QC-code written by this level. Here, default is 6.
 #' @param verbose Report the tally.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info. Stations
@@ -41,7 +40,6 @@ RH_QC_6_decoupling <- function(input,
                                decouple_r = -0.3,
                                decouple_trange = 3,
                                decouple_min_n = 60,
-                               flag_code = 6,
                                verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
@@ -133,8 +131,8 @@ RH_QC_6_decoupling <- function(input,
     if (n_found > 0) {
       # blank the decoupled days so later levels never see them
       X[mask, s] <- NA
-      # record this level's code
-      previous_flag[mask, s] <- flag_code
+      # record this level's code (6 = level 6, fixed by convention)
+      previous_flag[mask, s] <- 6
       # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found

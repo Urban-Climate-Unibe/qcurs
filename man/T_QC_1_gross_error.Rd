@@ -8,20 +8,16 @@ T_QC_1_gross_error(
   input,
   threshold_max = 60,
   threshold_min = -40,
-  flag_code = 1,
   verbose = TRUE
 )
 }
 \arguments{
-\item{input}{xts of temperature, or list(qc_data, qc_data_flagged, qc_info)
-from a previous level.}
+\item{input}{xts of temperature, or list from a previous QC level.}
 
 \item{threshold_max}{Upper bound in deg C --> values ABOVE it are flagged.}
 
 \item{threshold_min}{Lower bound in deg C --> values AT or BELOW it are
 flagged (inclusive, so the fault code -40.0 itself is caught).}
-
-\item{flag_code}{Code written by this level. Default 1.}
 
 \item{verbose}{Report the tally.}
 }
@@ -29,13 +25,11 @@ flagged (inclusive, so the fault code -40.0 itself is caught).}
 The chain list with qc_data, qc_data_flagged and qc_info.
 }
 \description{
-Removes physically impossible readings and logger fault codes (e.g. -45 or
-999). Flag convention for the whole chain: 0 = checked and unobjected,
-NA = no observation, N = objected by level N.
+Removes physically impossible readings and logger fault codes (e.g. -45 or 999).
 }
 \examples{
 \dontrun{
-res <- T_QC_1_gross_error(biel_xts)
+res <- T_QC_1_gross_error(x)
 }
 
 }

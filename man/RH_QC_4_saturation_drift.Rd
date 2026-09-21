@@ -11,7 +11,6 @@ RH_QC_4_saturation_drift(
   sat_min_hits = 12,
   sat_min_stations = 3,
   sat_window_days = 30,
-  flag_code = 4,
   verbose = TRUE
 )
 }
@@ -29,8 +28,6 @@ saturated steps of the segment, to count as a drifter.}
 \item{sat_min_stations}{Minimum stations reporting for a network median.}
 
 \item{sat_window_days}{Segment length in days.}
-
-\item{flag_code}{QC-code written by this level. Here, default is 4.}
 
 \item{verbose}{Report the tally.}
 }

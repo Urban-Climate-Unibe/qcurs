@@ -30,7 +30,6 @@
 #'   this chain, so the finished humidity object documents both runs. NULL
 #'   (default) means no inheritance.
 #' @param inherit_gapfill Also inherit the plain gap-fill code 50.
-#' @param flag_code QC-code written by this level. Here, default is 1.
 #' @param verbose Report the tally.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
@@ -49,7 +48,6 @@
 RH_QC_1_inherit_temperature <- function(input,
                                         temperature_flags = NULL,
                                         inherit_gapfill = FALSE,
-                                        flag_code = 1,
                                         verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
@@ -151,8 +149,8 @@ RH_QC_1_inherit_temperature <- function(input,
   if (n_total > 0) {
     # blank the inherited cells so later levels never see them
     X[mask] <- NA
-    # record this level's code
-    previous_flag[mask] <- flag_code
+    # record this level's code (1 = level 1, fixed by convention)
+    previous_flag[mask] <- 1
     # write the matrices back into the xts shells, keeping index and column names
     x[]   <- X
     flg[] <- previous_flag

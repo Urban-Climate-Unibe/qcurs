@@ -13,7 +13,6 @@ T_QC_6_spatial_consistency(
   k_neighbours = 5,
   min_neighbours = 2,
   landuse_mode = c("graded", "strict"),
-  flag_code = 6,
   verbose = TRUE
 )
 }
@@ -36,8 +35,6 @@ matched to data columns by ID.}
 \item{landuse_mode}{"graded" (paper: same class 1.0, vegetated/forest pairs
 0.4, else 0) or "strict" (same class only).}
 
-\item{flag_code}{QC-code written by this level. Here, default is 6.}
-
 \item{verbose}{Report the tally and the never-evaluated stations.}
 }
 \value{
@@ -46,31 +43,7 @@ The chain list with qc_data, qc_data_flagged and qc_info.
 \description{
 Implements equations (1)-(4) of Amini et al. (2026): a value is removed when
 it deviates from the Gaussian-distance- and landuse-weighted consensus of
-its neighbours by more than max(k * sigma', delta). Three review findings
-are corrected here:
-}
-\details{
-1. The k-nearest cap is applied AMONG LANDUSE-COMPATIBLE stations, after
-   the landuse masking. The published order (cap first, mask second) let
-   zero-weight stations occupy the k slots and displace compatible ones -
-   Lausanne Log_240 kept 1 of its 3 compatible neighbours that way, was
-   never evaluated, and a two-week 18 K indoor episode passed unflagged.
-2. There is NO lower gate on sigma. The published code additionally
-   required k*sigma > 0.5 and thereby switched the test off exactly when
-   the neighbours agreed best (the same episode lost another 27 percent to
-   it). The absolute floor delta alone protects against over-flagging, as
-   in the paper's equation (4).
-3. Both landuse spellings "Forest" and "Forests" count as forest, because
-   metadata and published code disagree and the mismatch silently isolates
-   forest stations.
-
-sigma_d (the Gaussian bandwidth) is the median pairwise distance over the
-stations PRESENT IN THE DATA - a deliberate, documented divergence from the
-original, which used all metadata rows including stations without data.
-
-Stations that never reach the minimum number of compatible valid neighbours
-are listed in `qc_info$t6_spatial_consistency$never_evaluated`. A station
-this test cannot see is a coverage statement, not a clean bill.
+its neighbours by more than max(k * sigma', delta).
 }
 \examples{
 \dontrun{

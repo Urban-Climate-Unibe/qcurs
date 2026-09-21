@@ -17,7 +17,6 @@
 #' @param sat_min_hits Minimum saturated observations per segment to judge.
 #' @param sat_min_stations Minimum stations reporting for a network median.
 #' @param sat_window_days Segment length in days.
-#' @param flag_code QC-code written by this level. Here, default is 4.
 #' @param verbose Report the tally.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
@@ -36,7 +35,6 @@ RH_QC_4_saturation_drift <- function(input,
                                      sat_min_hits = 12,
                                      sat_min_stations = 3,
                                      sat_window_days = 30,
-                                     flag_code = 4,
                                      verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
@@ -118,8 +116,8 @@ RH_QC_4_saturation_drift <- function(input,
     if (n_found > 0) {
       # blank the drifted values so later levels never see them
       X[mask, s] <- NA
-      # record this level's code
-      previous_flag[mask, s] <- flag_code
+      # record this level's code (4 = level 4, fixed by convention)
+      previous_flag[mask, s] <- 4
       # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found

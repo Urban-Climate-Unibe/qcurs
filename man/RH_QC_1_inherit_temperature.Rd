@@ -8,7 +8,6 @@ RH_QC_1_inherit_temperature(
   input,
   temperature_flags = NULL,
   inherit_gapfill = FALSE,
-  flag_code = 1,
   verbose = TRUE
 )
 }
@@ -22,8 +21,6 @@ this chain, so the finished humidity object documents both runs. NULL
 (default) means no inheritance.}
 
 \item{inherit_gapfill}{Also inherit the plain gap-fill code 50.}
-
-\item{flag_code}{QC-code written by this level. Here, default is 1.}
 
 \item{verbose}{Report the tally.}
 }

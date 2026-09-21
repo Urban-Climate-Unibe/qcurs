@@ -1,4 +1,4 @@
-#' Temperature QC Level 4: temporal persistence (stuck sensor)
+#' Temperature QC Level 4: stuck values
 #'
 #' Removes windows in which the sensor shows no variation at all.
 #'
@@ -13,26 +13,24 @@
 #' @param sd_tol Variation at or below this counts as "no variation". 0 keeps
 #'   exact constancy; a small value (e.g. 0.005) also catches a sensor
 #'   alternating between two adjacent quantisation steps.
-#' @param flag_code QC-code written by this level. Here, default is 4.
 #' @param verbose Report the tally.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
 #'
 #' @examples
 #' \dontrun{
-#' res <- T_QC_4_temporal_persistence(res, window_size = "6 hours")
+#' res <- T_QC_4_stuck_values(res, window_size = "6 hours")
 #' }
 #'
 #' @import xts
 #' @import zoo
 #' @export
 T_QC_4_stuck_values <- function(input,
-                                        window_size = "6 hours",
-                                        na_tolerance_frac = 0.5,
-                                        min_non_na = 5,
-                                        sd_tol = 0,
-                                        flag_code = 4,
-                                        verbose = TRUE) {
+                                window_size = "6 hours",
+                                na_tolerance_frac = 0.5,
+                                min_non_na = 5,
+                                sd_tol = 0,
+                                verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
@@ -85,6 +83,12 @@ T_QC_4_stuck_values <- function(input,
   if (width < 3)
     stop(sprintf("window_size '%s' is only %d time steps at a %g min resolution; need at least 2.",
                  window_size, width - 1, step_min))
+  # a window shorter than min_non_na points can never hold enough valid values:
+  # the test would run and flag nothing, silently. Refuse instead.
+  if (width < min_non_na)
+    stop(sprintf("window_size '%s' holds only %d points at a %g min resolution, but min_non_na = %d. Use a longer window or a smaller min_non_na.",
+                 if (inherits(window_size, "difftime")) format(window_size) else window_size,
+                 width, step_min, min_non_na))
   # absolute NA budget derived from the fraction
   max_na <- floor(na_tolerance_frac * width)
 
@@ -138,8 +142,8 @@ T_QC_4_stuck_values <- function(input,
     if (n_found > 0) {
       # blank the stuck stretch so later levels never see it
       X[mask, s] <- NA
-      # record this level's code
-      previous_flag[mask, s] <- flag_code
+      # record this level's code (4 = level 4, fixed by convention)
+      previous_flag[mask, s] <- 4
       # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found
@@ -157,19 +161,19 @@ T_QC_4_stuck_values <- function(input,
 
   # report so a zero-hit run is visibly a run, not a skip
   if (isTRUE(verbose))
-    message(sprintf("T4 persistence (%s = %d points, NA budget %d, min valid %d): %d flagged",
+    message(sprintf("T4 stuck values (%s = %d points, NA budget %d, min valid %d): %d flagged",
                     if (inherits(window_size, "difftime")) format(window_size) else window_size,
                     width, max_na, min_non_na, n_total))
 
   # write the updated matrices back and append this level under its own name
-  input$qc_data                         <- x
-  input$qc_data_flagged                 <- flg
-  input$qc_info$t4_temporal_persistence <- list(n_flagged            = n_total,
-                                                n_flagged_by_station = n_station,
-                                                window_size          = window_size,
-                                                width_points         = width,
-                                                na_tolerance_frac    = na_tolerance_frac,
-                                                min_non_na           = min_non_na,
-                                                sd_tol               = sd_tol)
+  input$qc_data                 <- x
+  input$qc_data_flagged         <- flg
+  input$qc_info$t4_stuck_values <- list(n_flagged            = n_total,
+                                        n_flagged_by_station = n_station,
+                                        window_size          = window_size,
+                                        width_points         = width,
+                                        na_tolerance_frac    = na_tolerance_frac,
+                                        min_non_na           = min_non_na,
+                                        sd_tol               = sd_tol)
   input
 }

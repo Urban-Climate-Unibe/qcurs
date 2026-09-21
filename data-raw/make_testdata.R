@@ -17,7 +17,7 @@
 #   E3  isolated spike          value + 15 K     -> level 3 (spike); the gap it
 #                                                  leaves is refilled by level 9
 #                                                  with code 50 + 3 = 53
-#   E4  stuck sensor            40 x 24.00 degC  -> level 4 (persistence)
+#   E4  stuck sensor            40 x 24.00 degC  -> level 4 (stuck values)
 #   E5  night offset            +12 K, 8 hours   -> level 6 (spatial) - planted
 #                                                  at Log_B4, the ONLY Biel
 #                                                  station with >= 2 compatible

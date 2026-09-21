@@ -8,7 +8,6 @@
 #' @param dt Half window in time steps (default is 3 which means +/-30 min at
 #'   10-minute data).
 #' @param diff Threshold in Kelvin (default is 6 K).
-#' @param flag_code QC-code written by this level. Here, default is 3.
 #' @param verbose Report the tally.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
@@ -24,7 +23,6 @@
 T_QC_3_time_consistency <- function(input,
                                     dt = 3,
                                     diff = 6,
-                                    flag_code = 3,
                                     verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
@@ -93,8 +91,8 @@ T_QC_3_time_consistency <- function(input,
     if (n_found > 0) {
       # blank the spikes so later levels never see them
       X[mask, s] <- NA
-      # record this level's code
-      previous_flag[mask, s] <- flag_code
+      # record this level's code (3 = level 3, fixed by convention)
+      previous_flag[mask, s] <- 3
       # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found

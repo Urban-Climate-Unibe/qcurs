@@ -22,7 +22,6 @@
 #'   (the saturation exception).
 #' @param stuck_min_frac Minimum fraction of the window that must hold valid
 #'   values for the window to be judged.
-#' @param flag_code QC-code written by this level. Here, default is 5.
 #' @param verbose Report the tally.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
@@ -40,7 +39,6 @@ RH_QC_5_persistence <- function(input,
                                 stuck_sd = 0.1,
                                 stuck_sat_max = 95,
                                 stuck_min_frac = 0.5,
-                                flag_code = 5,
                                 verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
@@ -143,8 +141,8 @@ RH_QC_5_persistence <- function(input,
     if (n_found > 0) {
       # blank the stuck stretch so later levels never see it
       X[mask, s] <- NA
-      # record this level's code
-      previous_flag[mask, s] <- flag_code
+      # record this level's code (5 = level 5, fixed by convention)
+      previous_flag[mask, s] <- 5
       # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found

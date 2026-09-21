@@ -54,7 +54,7 @@ T_QC_9_interpolate <- function(input, maxgap = 5, refill_flagged = TRUE,
   # plain numeric matrix of the values (QC removals are NA here)
   X <- coredata(x)
   # plain numeric matrix of the accumulated flags
-  F <- coredata(flg)
+  previous_flag <- coredata(flg)
   # tallies: filled plain gaps and refilled QC removals
   n_gap <- 0
   n_ref <- 0
@@ -63,7 +63,7 @@ T_QC_9_interpolate <- function(input, maxgap = 5, refill_flagged = TRUE,
     # this station's values as a plain vector
     v <- X[, s]
     # this station's flags
-    f <- F[, s]
+    f <- previous_flag[, s]
     # everything that is currently missing (true gaps AND QC removals)
     was_na <- is.na(v)
     if (!refill_flagged) {
@@ -87,8 +87,8 @@ T_QC_9_interpolate <- function(input, maxgap = 5, refill_flagged = TRUE,
     qc_hit <- filled & !is.na(f) & f > 0
     # fills over plain gaps get the base code
     plain <- filled & (is.na(f) | f == 0)
-    F[qc_hit, s] <- base_code + f[qc_hit]
-    F[plain, s]  <- base_code
+    previous_flag[qc_hit, s] <- base_code + f[qc_hit]
+    previous_flag[plain, s]  <- base_code
     # add to the tallies
     n_ref <- n_ref + sum(qc_hit)
     n_gap <- n_gap + sum(plain)
@@ -96,7 +96,7 @@ T_QC_9_interpolate <- function(input, maxgap = 5, refill_flagged = TRUE,
   if (n_gap + n_ref > 0) {
     # write the matrices back into the xts shells, keeping index and column names
     x[]   <- X
-    flg[] <- F
+    flg[] <- previous_flag
   }
 
 #-------------------------------------------------------------------------------

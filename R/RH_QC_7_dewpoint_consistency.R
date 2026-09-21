@@ -24,7 +24,6 @@
 #' @param td_radius_m Maximum neighbour distance in metres.
 #' @param td_k_neighbours At most this many nearest COMPATIBLE neighbours.
 #' @param td_min_neighbours Minimum valid neighbours to judge at all.
-#' @param flag_code QC-code written by this level. Here, default is 7.
 #' @param verbose Report the tally and the never-evaluated stations.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
@@ -46,7 +45,6 @@ RH_QC_7_dewpoint_consistency <- function(input,
                                          td_radius_m = 3000,
                                          td_k_neighbours = 5,
                                          td_min_neighbours = 2,
-                                         flag_code = 7,
                                          verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
@@ -206,7 +204,7 @@ RH_QC_7_dewpoint_consistency <- function(input,
     if (n_found > 0) {
       hit_ids <- ids[which(mask)]
       X[t, hit_ids] <- NA
-      previous_flag[t, hit_ids] <- flag_code
+      previous_flag[t, hit_ids] <- 7
       n_station[hit_ids] <- n_station[hit_ids] + 1L
       n_total <- n_total + n_found
     }

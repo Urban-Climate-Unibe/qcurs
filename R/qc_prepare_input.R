@@ -4,6 +4,12 @@
 #' the first statement of every QC level, temperature and humidity alike, so
 #' that all levels share one entry contract.
 #'
+#' Flag convention for the whole chain, temperature and humidity alike:
+#' 0 = checked and unobjected, NA = no observation, N = objected by level N,
+#' 50 = plain gap filled by the optional interpolation, 50 + N = removed by
+#' level N and refilled by the interpolation. The code of a level is fixed
+#' by this convention and is not a parameter.
+#'
 #' @param input Either an `xts` object (stations in columns, one column per
 #'   sensor, named after the station ID) at the start of the chain, or the
 #'   `list(qc_data, qc_data_flagged, qc_info)` handed on by a previous level.

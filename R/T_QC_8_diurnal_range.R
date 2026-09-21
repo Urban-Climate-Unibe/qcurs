@@ -16,7 +16,6 @@
 #' @param min_obs_per_day Valid values a day needs to have its range judged
 #'   (72 = half of a 10-minute day).
 #' @param min_reference_days Valid days a station needs for a robust median.
-#' @param flag_code QC-code written by this level. Here, default is 8.
 #' @param verbose Report the tally.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
@@ -34,7 +33,6 @@ T_QC_8_diurnal_range <- function(input,
                                  min_consecutive_days = 2,
                                  min_obs_per_day = 72,
                                  min_reference_days = 14,
-                                 flag_code = 8,
                                  verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
@@ -119,8 +117,8 @@ T_QC_8_diurnal_range <- function(input,
     if (n_found > 0) {
       # blank the collapsed days so later levels never see them
       X[mask, s] <- NA
-      # record this level's code
-      previous_flag[mask, s] <- flag_code
+      # record this level's code (8 = level 8, fixed by convention)
+      previous_flag[mask, s] <- 8
       # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found

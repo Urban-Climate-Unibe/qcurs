@@ -4,7 +4,7 @@
 \alias{T_QC_3_time_consistency}
 \title{Temperature QC Level 3: time consistency (isolated spikes)}
 \usage{
-T_QC_3_time_consistency(input, dt = 3, diff = 6, flag_code = 3, verbose = TRUE)
+T_QC_3_time_consistency(input, dt = 3, diff = 6, verbose = TRUE)
 }
 \arguments{
 \item{input}{xts of temperature, or list from a previous QC level.}
@@ -14,8 +14,6 @@ T_QC_3_time_consistency(input, dt = 3, diff = 6, flag_code = 3, verbose = TRUE)
 
 \item{diff}{Threshold in Kelvin (default is 6 K).}
 
-\item{flag_code}{QC-code written by this level. Here, default is 3.}
-
 \item{verbose}{Report the tally.}
 }
 \value{
@@ -24,15 +22,7 @@ The chain list with qc_data, qc_data_flagged and qc_info.
 \description{
 A value is removed only if it deviates by at least `diff` from the median of
 the surrounding window AND from the values before it AND from the values
-after it. The triple condition makes the test immune to genuine fronts and
-step changes: those move the neighbours with them, so at most the single
-point of the jump can ever qualify. Persistent offsets are invisible to this
-level by construction. QC Level 4, 6 and 8 address those.
-}
-\details{
-The published code uses diff = 6 while the paper states 3 K; on the reviewed
-campaigns the choice is irrelevant because the conjunction binds, not the
-threshold, so the shipped default follows the code.
+after it.
 }
 \examples{
 \dontrun{

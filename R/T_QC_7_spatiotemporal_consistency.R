@@ -8,7 +8,6 @@
 #' @param radius_m Neighbour search radius in metres (paper: 2500).
 #' @param n_neighbours Required number of nearby stations (paper: 5).
 #' @param threshold Quantile for both the spatial and the temporal criteria.
-#' @param flag_code QC-code written by this level. Here, default is 7.
 #' @param verbose Report the tally and the skipped stations.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info. Stations
@@ -29,7 +28,6 @@ T_QC_7_spatiotemporal_consistency <- function(input,
                                               radius_m = 2500,
                                               n_neighbours = 5,
                                               threshold = 0.99,
-                                              flag_code = 7,
                                               verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
@@ -144,8 +142,8 @@ T_QC_7_spatiotemporal_consistency <- function(input,
     if (n_found > 0) {
       # blank the values so later levels never see them
       X[mask, s] <- NA
-      # record this level's code
-      previous_flag[mask, s] <- flag_code
+      # record this level's code (7 = level 7, fixed by convention)
+      previous_flag[mask, s] <- 7
       # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found

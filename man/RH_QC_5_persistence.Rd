@@ -10,7 +10,6 @@ RH_QC_5_persistence(
   stuck_sd = 0.1,
   stuck_sat_max = 95,
   stuck_min_frac = 0.5,
-  flag_code = 5,
   verbose = TRUE
 )
 }
@@ -30,8 +29,6 @@ coarsely.}
 
 \item{stuck_min_frac}{Minimum fraction of the window that must hold valid
 values for the window to be judged.}
-
-\item{flag_code}{QC-code written by this level. Here, default is 5.}
 
 \item{verbose}{Report the tally.}
 }

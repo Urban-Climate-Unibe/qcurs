@@ -10,7 +10,6 @@ T_QC_8_diurnal_range(
   min_consecutive_days = 2,
   min_obs_per_day = 72,
   min_reference_days = 14,
-  flag_code = 8,
   verbose = TRUE
 )
 }
@@ -27,31 +26,21 @@ them is objected to.}
 
 \item{min_reference_days}{Valid days a station needs for a robust median.}
 
-\item{flag_code}{QC-code written by this level. Here, default is 8.}
-
 \item{verbose}{Report the tally.}
 }
 \value{
 The chain list with qc_data, qc_data_flagged and qc_info.
 }
 \description{
-NEW level, no counterpart in the published pipeline - it closes the gap the
-review demonstrated: a sensor reading indoors (or otherwise decoupled from
-the atmosphere) produces values that pass every classic test - physically
-plausible, locally smooth, varying - and at stations without
-landuse-compatible neighbours it is also spatially unchecked. Lausanne
-Log_240 ran two weeks at 21-23 degC against a network at 4 degC and
-received zero spatial flags. Its giveaway was trivial: a diurnal amplitude
-of 0.5 K against a station median of 11.8 K.
+A sensor reading indoors (or otherwise decoupled from
+the atmosphere) produces values that might pass every classic test - physically
+plausible, locally smooth, varying and at stations without
+landuse-compatible neighbours it is also spatially unchecked.
 }
 \details{
 This level removes days whose diurnal range falls below a fraction of the
 station's OWN median range, for a minimum number of CONSECUTIVE days. It
-needs no neighbours and therefore also covers isolated stations. Single
-calm fog days survive via the consecutive-days requirement and the low
-fraction; a genuine multi-day inversion with the whole network flat can
-still trigger it - which is why the verdict means "suspicious", exactly
-like the spatial level, and why the fraction is deliberately low.
+needs no neighbours and therefore also covers isolated stations
 }
 \examples{
 \dontrun{

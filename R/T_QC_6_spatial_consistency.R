@@ -14,7 +14,6 @@
 #' @param min_neighbours Minimum valid neighbours to judge at all (paper: 2).
 #' @param landuse_mode "graded" (paper: same class 1.0, vegetated/forest pairs
 #'   0.4, else 0) or "strict" (same class only).
-#' @param flag_code QC-code written by this level. Here, default is 6.
 #' @param verbose Report the tally and the never-evaluated stations.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
@@ -36,7 +35,6 @@ T_QC_6_spatial_consistency <- function(input,
                                        k_neighbours = 5,
                                        min_neighbours = 2,
                                        landuse_mode = c("graded", "strict"),
-                                       flag_code = 6,
                                        verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
@@ -205,8 +203,8 @@ T_QC_6_spatial_consistency <- function(input,
       hit_ids <- ids[which(mask)]
       # blank the values so later levels never see them
       X[t, hit_ids] <- NA
-      # record this level's code
-      previous_flag[t, hit_ids] <- flag_code
+      # record this level's code (6 = level 6, fixed by convention)
+      previous_flag[t, hit_ids] <- 6
       # add the number of new flags to the counters
       n_station[hit_ids] <- n_station[hit_ids] + 1L
       n_total <- n_total + n_found

@@ -9,7 +9,6 @@ T_QC_5_climatic_outliers(
   ext_lim_factor = 4,
   min_n = 300,
   require_multi_year = TRUE,
-  flag_code = 5,
   verbose = TRUE
 )
 }
@@ -23,8 +22,6 @@ T_QC_5_climatic_outliers(
 \item{require_multi_year}{Only judge a station-month whose sample spans
 more than one calendar year.}
 
-\item{flag_code}{QC-code written by this level. Here, default is 5.}
-
 \item{verbose}{Report the tally and the refusals.}
 }
 \value{
@@ -34,23 +31,12 @@ The chain list with qc_data, qc_data_flagged and qc_info. The
 }
 \description{
 Removes values beyond Q1 - m*IQR / Q3 + m*IQR of the station's own
-distribution per calendar month, all years pooled. The review established
-that this test is only meaningful on a multi-year record: on a
-single-season campaign the monthly quartiles describe the current sample
-instead of a climatology - and worse, they are computed from potentially
-contaminated data itself (Lausanne Log_240: the November bounds
-[18.8, 24.2] were learned entirely FROM the two-week indoor episode they
-were supposed to catch).
+distribution per calendar month, all years pooled.
 }
 \details{
-Two guards therefore apply: a real minimum sample size, and - by default -
-the requirement that a month's sample spans more than one calendar year. On
-campaign data the level then refuses every station-month AND SAYS SO, which
-is the honest outcome; set `require_multi_year = FALSE` to override.
-Fractional edge months (a campaign starting 31 May 22:00 leaves 12 "May"
-values, from which the published pipeline computed quartile bounds of two
-hours of night data and removed 8 perfectly normal readings) are handled by
-`min_n` alone.
+Two guards apply: a real minimum sample size, and - by default -
+the requirement that a month's sample spans more than one calendar year.
+set `require_multi_year = FALSE` to override.
 }
 \examples{
 \dontrun{

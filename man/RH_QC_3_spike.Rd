@@ -4,13 +4,7 @@
 \alias{RH_QC_3_spike}
 \title{Humidity QC Level 3: isolated spikes}
 \usage{
-RH_QC_3_spike(
-  input,
-  spike_dt = 3,
-  spike_diff = 20,
-  flag_code = 3,
-  verbose = TRUE
-)
+RH_QC_3_spike(input, spike_dt = 3, spike_diff = 20, verbose = TRUE)
 }
 \arguments{
 \item{input}{xts of relative humidity, or list from a previous QC level.}
@@ -18,8 +12,6 @@ RH_QC_3_spike(
 \item{spike_dt}{Half window in time steps.}
 
 \item{spike_diff}{Threshold in percent relative humidity.}
-
-\item{flag_code}{QC-code written by this level. Here, default is 3.}
 
 \item{verbose}{Report the tally.}
 }

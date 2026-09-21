@@ -23,7 +23,7 @@ test_that("run_qc_temperature equals the manual chain and records skips", {
   r_man  <- T_QC_1_gross_error(f$tt, verbose = FALSE)
   r_man  <- T_QC_2_out_of_range(r_man, verbose = FALSE)
   r_man  <- T_QC_3_time_consistency(r_man, verbose = FALSE)
-  r_man  <- T_QC_4_temporal_persistence(r_man, verbose = FALSE)
+  r_man  <- T_QC_4_stuck_values(r_man, verbose = FALSE)
   r_man  <- T_QC_5_climatic_outliers(r_man, verbose = FALSE)
   r_man  <- T_QC_6_spatial_consistency(r_man, metadata = f$md, verbose = FALSE)
   r_man  <- T_QC_7_spatiotemporal_consistency(r_man, metadata = f$md, verbose = FALSE)

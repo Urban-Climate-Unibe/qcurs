@@ -6,7 +6,6 @@
 #' @param threshold_max Upper bound in deg C --> values ABOVE it are flagged.
 #' @param threshold_min Lower bound in deg C --> values AT or BELOW it are
 #'   flagged (inclusive, so the fault code -40.0 itself is caught).
-#' @param flag_code QC-code written by this level. Here, default is 1.
 #' @param verbose Report the tally.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
@@ -22,7 +21,6 @@
 T_QC_1_gross_error <- function(input,
                                threshold_max = 60,
                                threshold_min = -40,
-                               flag_code = 1,
                                verbose = TRUE) {
 
   #-------------------------------------------------------------------------------
@@ -64,8 +62,8 @@ T_QC_1_gross_error <- function(input,
   if (n_total > 0) {
     # blank the objected values so later levels never see them
     X[mask] <- NA
-    # record this level's code
-    previous_flag[mask] <- flag_code
+    # record this level's code (1 = level 1, fixed by convention)
+    previous_flag[mask] <- 1
     # write the matrices back into the xts shells, keeping index and column names
     x[]   <- X
     flg[] <- previous_flag

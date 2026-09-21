@@ -10,7 +10,6 @@ T_QC_2_out_of_range(
     list(min_val = -21.05, max_val = 38.08), summer = list(min_val = -5.85, max_val =
     46.26), autumn = list(min_val = -8.42, max_val = 40.87)),
   summer_min = NULL,
-  flag_code = 2,
   verbose = TRUE
 )
 }
@@ -24,8 +23,6 @@ are flagged.}
 \item{summer_min}{Convenience override for the most problematic bound;
 overwrites `season_thresholds$summer$min_val` when not NULL.}
 
-\item{flag_code}{Code written by this level. Default 2.}
-
 \item{verbose}{Report the per-season tally.}
 }
 \value{
@@ -35,15 +32,10 @@ The chain list with qc_data, qc_data_flagged and qc_info.
 Flags values outside seasonal plausibility bounds, evaluated per time step
 against the bound of the season that time step falls into.
 }
-\details{
-Provenance of the shipped defaults: the published pipeline (Amini et al.
-2026) derived them from ERA5-Land 1995-2023 extremes for Bern plus a safety
-margin of 6 K and a warm-season bias correction of up to 6 K. Reconstructing
-the eight numbers against the Zollikofen record shows the margin was ADDED
-instead of subtracted at the summer and autumn LOWER bounds: the published
-summer minimum of 7.85 degC cuts 4.3 percent of Zollikofen's own summer
-nights, while the intended bound would have touched none in 29 years. The
-summer minimum shipped here is therefore a physically motivated lowland
-value, not the published one. Set `season_thresholds` or `summer_min`
-explicitly for other regions or elevations.
+\examples{
+\dontrun{
+res <- T_QC_2_out_of_range(res)
+res <- T_QC_2_out_of_range(res, summer_min = -10)   # colder site
+}
+
 }

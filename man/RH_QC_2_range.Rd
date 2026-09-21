@@ -4,7 +4,7 @@
 \alias{RH_QC_2_range}
 \title{Humidity QC Level 2: physical range}
 \usage{
-RH_QC_2_range(input, rh_min = 0, rh_max = 105, flag_code = 2, verbose = TRUE)
+RH_QC_2_range(input, rh_min = 0, rh_max = 105, verbose = TRUE)
 }
 \arguments{
 \item{input}{xts of relative humidity, or list from a previous QC level.}
@@ -13,8 +13,6 @@ RH_QC_2_range(input, rh_min = 0, rh_max = 105, flag_code = 2, verbose = TRUE)
 
 \item{rh_max}{Upper tolerance bound in percent; values in (100, rh_max]
 are clamped to 100, values above are objected to.}
-
-\item{flag_code}{QC-code written by this level. Here, default is 2.}
 
 \item{verbose}{Report the tally.}
 }
