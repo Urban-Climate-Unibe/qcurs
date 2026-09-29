@@ -18,7 +18,9 @@
 #' @param min_reference_days Valid days a station needs for a robust median.
 #' @param verbose Report the tally.
 #'
-#' @return The chain list with qc_data, qc_data_flagged and qc_info.
+#' @return The chain list with qc_data, qc_data_flagged and qc_info. Stations
+#'   without enough judged days for a baseline are listed in
+#'   `qc_info$t8_diurnal_range$skipped_stations`.
 #'
 #' @examples
 #' \dontrun{
@@ -37,7 +39,7 @@ T_QC_8_diurnal_range <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature")
+  input <- qc_prepare_input(input, what = "temperature", level = "t8_diurnal_range")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -64,23 +66,28 @@ T_QC_8_diurnal_range <- function(input,
   X <- coredata(x)
   # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
-  # calendar day of every time step
-  day <- as.Date(zoo::index(x))
-  # the day sequence of the record, in order
-  days <- unique(day)
+  # calendar day of every time step, in the time zone of the index (format()
+  # honours it; as.Date() only does so from R 4.3 on)
+  day <- format(zoo::index(x), "%Y-%m-%d")
+  # the row numbers of every day, once, in the order of the record
+  day_rows <- split(seq_along(day), factor(day, levels = unique(day)))
   # count across all stations
   n_total <- 0
   # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
+  # per-station coverage: values on days that got a range verdict
+  n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
+  # stations without a baseline, so a zero-flag run is not a clean bill
+  skipped_stations <- character(0)
 
   # iterate over all stations (columns)
   for (s in colnames(X)) {
     # extract data vector of this station
     v <- X[, s]
     # diurnal range per day: max minus min, or NA when the day is too sparse
-    rng <- vapply(days, function(dd) {
+    rng <- vapply(day_rows, function(rows) {
       # the day's values
-      z <- v[day == dd]
+      z <- v[rows]
       # too sparse: no verdict for this day
       if (sum(!is.na(z)) < min_obs_per_day) return(NA_real_)
       # the diurnal amplitude
@@ -88,8 +95,13 @@ T_QC_8_diurnal_range <- function(input,
     }, numeric(1))
     # the station's own typical amplitude, robust against single odd days
     ref <- stats::median(rng, na.rm = TRUE)
-    # not enough judged days for a baseline: skip the whole station
-    if (sum(!is.na(rng)) < min_reference_days || !is.finite(ref) || ref <= 0) next
+    # not enough judged days for a baseline: skip the whole station and say so
+    if (sum(!is.na(rng)) < min_reference_days || !is.finite(ref) || ref <= 0) {
+      skipped_stations <- c(skipped_stations, s)
+      next
+    }
+    # every value on a day with a verdict counts as judged
+    n_judged[s] <- sum(!is.na(v[unlist(day_rows[!is.na(rng)])]))
     # days with a collapsed amplitude
     low <- !is.na(rng) & rng < range_frac * ref
     # run-length encode to find CONSECUTIVE stretches of collapsed days
@@ -106,7 +118,9 @@ T_QC_8_diurnal_range <- function(input,
     # nothing collapsed long enough at this station
     if (!length(flag_days)) next
     # every valid value on the objected days
-    hit <- day %in% days[flag_days] & !is.na(v)
+    hit <- rep(FALSE, length(v))
+    hit[unlist(day_rows[flag_days])] <- TRUE
+    hit <- hit & !is.na(v)
 
     # combine the verdict with THIS station's column only
     mask <- hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
@@ -135,18 +149,23 @@ T_QC_8_diurnal_range <- function(input,
   # report and hand the pair on to the next level
 
   # report so a zero-hit run is visibly a run, not a skip
-  if (isTRUE(verbose))
+  if (isTRUE(verbose)) {
     message(sprintf("T8 diurnal range collapse (< %g of station median, >= %d days): %d flagged",
                     range_frac, min_consecutive_days, n_total))
+    if (length(skipped_stations))
+      message("  skipped (too few judged days for a baseline): ", paste(skipped_stations, collapse = ", "))
+  }
 
   # write the updated matrices back and append this level under its own name
   input$qc_data                  <- x
   input$qc_data_flagged          <- flg
   input$qc_info$t8_diurnal_range <- list(n_flagged            = n_total,
                                          n_flagged_by_station = n_station,
+                                         n_judged_by_station  = n_judged,
                                          range_frac           = range_frac,
                                          min_consecutive_days = min_consecutive_days,
                                          min_obs_per_day      = min_obs_per_day,
-                                         min_reference_days   = min_reference_days)
+                                         min_reference_days   = min_reference_days,
+                                         skipped_stations     = skipped_stations)
   input
 }

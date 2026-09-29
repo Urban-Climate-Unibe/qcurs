@@ -3,6 +3,10 @@
 #' Removes values that are simultaneously extreme in space (against ALL nearby
 #' stations) and in time (against their own preceding and following steps).
 #'
+#' Stations are processed one after the other on the CURRENT matrix: a value
+#' this level removes at one station is already gone when a later station
+#' compares against it, so the column order can matter for borderline cases.
+#'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param metadata Data frame with columns ID, LAT, LON.
 #' @param radius_m Neighbour search radius in metres (paper: 2500).
@@ -11,8 +15,8 @@
 #' @param verbose Report the tally and the skipped stations.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info. Stations
-#'   without a full neighbourhood are listed in
-#'   `qc_info$t7_spatiotemporal$skipped`.
+#'   without a full neighbourhood, or without a metadata row, are listed in
+#'   `qc_info$t7_spatiotemporal_consistency$skipped`.
 #'
 #' @examples
 #' \dontrun{
@@ -32,7 +36,7 @@ T_QC_7_spatiotemporal_consistency <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature")
+  input <- qc_prepare_input(input, what = "temperature", level = "t7_spatiotemporal_consistency")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -53,22 +57,21 @@ T_QC_7_spatiotemporal_consistency <- function(input,
     stop("Metadata must contain the columns ID, LAT, LON.")
   # duplicated IDs would make the match ambiguous
   if (anyDuplicated(md$ID)) stop("Metadata contains duplicated IDs.")
-  # neighbours are searched among DATA-BEARING stations only (repair, see header)
+  # neighbours are searched among DATA-BEARING stations only
   ids <- intersect(colnames(x), md$ID)
+  # stations without a metadata row can never be evaluated - say so once
+  missing_md <- setdiff(colnames(x), md$ID)
+  if (length(missing_md) > 0)
+    warning(sprintf("No metadata for: %s - these stations cannot be evaluated by this level.",
+                    paste(missing_md, collapse = ", ")))
   # align the metadata rows to those stations
   md <- md[match(ids, md$ID), ]
-  # number of stations actually usable
-  ns <- length(ids)
 
   #-------------------------------------------------------------------------------
-  # pairwise distances once, they do not change over time
+  # pairwise distances once, they do not change over time (validates LAT/LON);
+  # with no matching station there is no geometry and the station loop below is empty
 
-  # pairwise distance matrix in metres
-  D <- matrix(0, ns, ns, dimnames = list(ids, ids))
-  for (i in seq_len(ns)) for (j in seq_len(ns))
-    D[i, j] <- geosphere::distHaversine(c(md$LON[i], md$LAT[i]), c(md$LON[j], md$LAT[j]))
-  # a station is not its own neighbour
-  diag(D) <- NA
+  D <- if (length(ids)) qc_distance_matrix(md) else NULL
 
   # internal shift helpers, so this file needs no dplyr dependency
   shift_back <- function(v) c(NA, v[-length(v)])   # the previous value at each position
@@ -85,8 +88,10 @@ T_QC_7_spatiotemporal_consistency <- function(input,
   n_total <- 0
   # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
+  # per-station coverage: cells with a full neighbourhood and both time neighbours
+  n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
   # stations without a full neighbourhood, so a zero-flag run is not a clean bill
-  skipped <- character(0)
+  skipped <- if (length(missing_md)) paste0(missing_md, "(no metadata)") else character(0)
 
   # iterate over all target stations that have metadata
   for (s in ids) {
@@ -131,6 +136,8 @@ T_QC_7_spatiotemporal_consistency <- function(input,
     # temporal criterion: both changes exist and both are extreme
     temporal <- !is.na(d_pre) & !is.na(d_nex) & abs(d_pre) > q_pre & abs(d_nex) > q_nex
 
+    # judged = both criteria could be evaluated: value, full neighbourhood, both time neighbours
+    n_judged[s] <- sum(!is.na(v) & n_avail >= n_neighbours & !is.na(d_pre) & !is.na(d_nex))
     # extreme in space AND in time: the objection condition
     hit <- spatial & temporal
     # combine the verdict with THIS station's column only
@@ -170,11 +177,12 @@ T_QC_7_spatiotemporal_consistency <- function(input,
   # write the updated matrices back and append this level under its own name
   input$qc_data                   <- x
   input$qc_data_flagged           <- flg
-  input$qc_info$t7_spatiotemporal <- list(n_flagged            = n_total,
-                                          n_flagged_by_station = n_station,
-                                          radius_m             = radius_m,
-                                          n_neighbours         = n_neighbours,
-                                          threshold            = threshold,
-                                          skipped              = skipped)
+  input$qc_info$t7_spatiotemporal_consistency <- list(n_flagged            = n_total,
+                                                      n_flagged_by_station = n_station,
+                                                      n_judged_by_station  = n_judged,
+                                                      radius_m             = radius_m,
+                                                      n_neighbours         = n_neighbours,
+                                                      threshold            = threshold,
+                                                      skipped              = skipped)
   input
 }

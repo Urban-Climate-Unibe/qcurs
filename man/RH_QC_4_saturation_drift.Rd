@@ -6,28 +6,27 @@
 \usage{
 RH_QC_4_saturation_drift(
   input,
-  sat_network_min = 95,
-  sat_station_max = 90,
-  sat_min_hits = 12,
-  sat_min_stations = 3,
-  sat_window_days = 30,
+  network_min = 95,
+  station_max = 90,
+  min_hits = 12,
+  min_stations = 3,
+  window_days = 30,
   verbose = TRUE
 )
 }
 \arguments{
 \item{input}{xts of relative humidity, or list from a previous QC level.}
 
-\item{sat_network_min}{Network median above which a step counts as
-saturated.}
+\item{network_min}{Network median above which a step counts as saturated.}
 
-\item{sat_station_max}{Ceiling the station must stay below, across ALL
+\item{station_max}{Ceiling the station must stay below, across ALL
 saturated steps of the segment, to count as a drifter.}
 
-\item{sat_min_hits}{Minimum saturated observations per segment to judge.}
+\item{min_hits}{Minimum saturated observations per segment to judge.}
 
-\item{sat_min_stations}{Minimum stations reporting for a network median.}
+\item{min_stations}{Minimum stations reporting for a network median.}
 
-\item{sat_window_days}{Segment length in days.}
+\item{window_days}{Segment length in days.}
 
 \item{verbose}{Report the tally.}
 }
@@ -38,11 +37,19 @@ The chain list with qc_data, qc_data_flagged and qc_info.
 The classic ageing failure of capacitive elements: fog or continuous rain
 drives the whole network to saturation, and a drifted sensor stays well
 below it while its values remain perfectly plausible. No other test sees
-this. The criterion runs in segments of `sat_window_days`: judged over the
+this. The criterion runs in segments of `window_days`: judged over the
 whole record, the healthy first half of a campaign would acquit a sensor
 that drifted in the second half. Objections land on the saturated time
 steps of the offending station - where the evidence is - not across the
 whole segment.
+}
+\details{
+Two properties to keep in mind. A station that reaches `station_max` even
+once during a segment's saturated steps is acquitted for that whole
+segment; if a drift starts mid-segment, shorten `window_days`. And the
+network median includes the drifting stations themselves, so when a large
+share of a small network drifts at once, the network no longer counts as
+saturated and nothing is caught.
 }
 \examples{
 \dontrun{

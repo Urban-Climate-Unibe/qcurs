@@ -29,7 +29,9 @@ them is objected to.}
 \item{verbose}{Report the tally.}
 }
 \value{
-The chain list with qc_data, qc_data_flagged and qc_info.
+The chain list with qc_data, qc_data_flagged and qc_info. Stations
+  without enough judged days for a baseline are listed in
+  `qc_info$t8_diurnal_range$skipped_stations`.
 }
 \description{
 A sensor reading indoors (or otherwise decoupled from

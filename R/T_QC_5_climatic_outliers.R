@@ -35,7 +35,7 @@ T_QC_5_climatic_outliers <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature")
+  input <- qc_prepare_input(input, what = "temperature", level = "t5_climatic_outliers")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -64,6 +64,8 @@ T_QC_5_climatic_outliers <- function(input,
   n_total <- 0
   # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
+  # per-station coverage: cells in station-months that got a verdict
+  n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
   # which station-months were refused, so a zero-flag run is not mistaken for a clean one
   refused <- character(0)
 
@@ -85,6 +87,8 @@ T_QC_5_climatic_outliers <- function(input,
         if (nv > 0) refused <- c(refused, sprintf("%s/%02d(n=%d,y=%d)", s, mm, nv, years_span))
         next
       }
+      # this station-month is judged, whatever the verdict
+      n_judged[s] <- n_judged[s] + nv
       # quartiles of the pooled monthly sample
       q <- stats::quantile(v[sel], c(0.25, 0.75))
       # interquartile range
@@ -93,7 +97,7 @@ T_QC_5_climatic_outliers <- function(input,
       lo <- q[1] - ext_lim_factor * iqr
       hi <- q[2] + ext_lim_factor * iqr
       # strictly outside ("exceed", per the paper wording), this month only
-      hit <- mon == mm & !is.na(v) & (v < lo | v > hi)
+      hit <- sel & (v < lo | v > hi)
 
       # combine the verdict with THIS station's column only
       mask <- hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
@@ -137,6 +141,7 @@ T_QC_5_climatic_outliers <- function(input,
   input$qc_data_flagged              <- flg
   input$qc_info$t5_climatic_outliers <- list(n_flagged            = n_total,
                                              n_flagged_by_station = n_station,
+                                             n_judged_by_station  = n_judged,
                                              ext_lim_factor       = ext_lim_factor,
                                              min_n                = min_n,
                                              require_multi_year   = require_multi_year,

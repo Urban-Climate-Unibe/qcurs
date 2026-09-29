@@ -83,8 +83,9 @@ run_qc_temperature <- function(input,
 #' `temperature` is ideally the RESULT LIST of the temperature chain: level 1
 #' then inherits its flags, and levels 6 and 7 use its CLEANED series. A bare
 #' temperature xts also works for levels 6 and 7, but carries no flags - level
-#' 1 is then skipped audibly. Without any temperature, levels 1, 6 and 7 are
-#' skipped audibly.
+#' 1 then runs, inherits nothing, and says so. Levels 6 and 7 always run and
+#' skip themselves, with the reason in their record, when temperature or
+#' metadata are missing.
 #'
 #' @param input xts of relative humidity (or an already started chain list).
 #' @param temperature The temperature chain result list (preferred), or a bare
@@ -93,7 +94,7 @@ run_qc_temperature <- function(input,
 #'   to skip it.
 #' @param interpolate Also run the optional level 8 gap interpolation.
 #' @param params Named list of per-level parameter overrides, keyed rh1..rh8,
-#'   e.g. `list(rh3 = list(spike_diff = 15))`.
+#'   e.g. `list(rh3 = list(threshold = 15))`.
 #' @param verbose Passed to every level.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info; skipped
@@ -115,7 +116,7 @@ run_qc_humidity <- function(input,
                             params = list(),
                             verbose = TRUE) {
   # the overrides must be a named list keyed by level
-  if (!is.list(params)) stop("params must be a named list, e.g. list(rh3 = list(spike_diff = 15)).")
+  if (!is.list(params)) stop("params must be a named list, e.g. list(rh3 = list(threshold = 15)).")
   ok_keys <- paste0("rh", 1:8)
   if (length(params) && (is.null(names(params)) || !all(names(params) %in% ok_keys)))
     stop(sprintf("params keys must be among %s.", paste(ok_keys, collapse = ", ")))
@@ -123,9 +124,7 @@ run_qc_humidity <- function(input,
   # does the temperature argument carry flags (i.e. is it a chain result)?
   has_flags <- is.list(temperature) && !is.data.frame(temperature) &&
     !inherits(temperature, "xts") && "qc_data_flagged" %in% names(temperature)
-  # is there any temperature series at all (result list or bare xts/matrix)?
-  has_series <- !is.null(temperature)
-  
+
   # one level call: base arguments, overridden by the caller's params entry
   step <- function(fun, key, base = list()) {
     args <- utils::modifyList(c(list(verbose = verbose), base),
@@ -133,39 +132,24 @@ run_qc_humidity <- function(input,
     do.call(fun, c(list(input = input), args))
   }
   
-  # level 1 inherits FLAGS: it needs the chain result, a bare series cannot feed it
-  if (has_flags) {
-    input <- step(RH_QC_1_inherit_temperature, "rh1", list(temperature_flags = temperature))
-  } else {
-    if (isTRUE(verbose))
-      message(if (has_series)
-        "run_qc_humidity: temperature has no flags (bare series) - level 1 (inheritance) skipped."
-        else
-        "run_qc_humidity: no temperature supplied - level 1 (inheritance) skipped.")
-  }
+  # level 1 always runs: it inherits from a chain result (flags + records); given
+  # a bare temperature series it gets NULL and reports itself that nothing can
+  # be inherited. The level, not the runner, says why.
+  input <- step(RH_QC_1_inherit_temperature, "rh1",
+                list(temperature_flags = if (has_flags) temperature else NULL))
   input <- step(RH_QC_2_range,            "rh2")
   input <- step(RH_QC_3_spike,            "rh3")
   input <- step(RH_QC_4_saturation_drift, "rh4")
-  input <- step(RH_QC_5_persistence,      "rh5")
-  # levels 6 and 7 need the temperature SERIES (cleaned result preferred)
-  if (has_series) {
-    input <- step(RH_QC_6_decoupling, "rh6", list(temperature = temperature))
-    if (!is.null(metadata)) {
-      input <- step(RH_QC_7_dewpoint_consistency, "rh7",
-                    list(temperature = temperature, metadata = metadata))
-    } else if (isTRUE(verbose)) {
-      message("run_qc_humidity: no metadata supplied - level 7 (dewpoint consistency) skipped.")
-    }
-  } else if (isTRUE(verbose)) {
-    message("run_qc_humidity: no temperature supplied - levels 6 (decoupling) and 7 (dewpoint) skipped.")
-  }
+  input <- step(RH_QC_5_stuck_values,     "rh5")
+  # levels 6 and 7 always run: given what is there, each skips itself and says why
+  input <- step(RH_QC_6_decoupling, "rh6", list(temperature = temperature))
+  input <- step(RH_QC_7_dewpoint_consistency, "rh7",
+                list(temperature = temperature, metadata = metadata))
   # the interpolation alters the data: only on explicit request
   if (isTRUE(interpolate)) input <- step(RH_QC_8_interpolate, "rh8")
-  
+
   # record what was skipped, so the result says so even without the console
-  skipped <- c(if (!has_flags) "rh1",
-               if (!has_series) c("rh6", "rh7") else if (is.null(metadata)) "rh7",
-               if (!isTRUE(interpolate)) "rh8")
+  skipped <- c(if (!isTRUE(interpolate)) "rh8")
   input$qc_info$run_qc_humidity <- list(levels_skipped = if (length(skipped)) skipped else character(0))
   input
 }

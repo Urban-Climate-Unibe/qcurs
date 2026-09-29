@@ -4,14 +4,14 @@
 \alias{RH_QC_3_spike}
 \title{Humidity QC Level 3: isolated spikes}
 \usage{
-RH_QC_3_spike(input, spike_dt = 3, spike_diff = 20, verbose = TRUE)
+RH_QC_3_spike(input, dt = 3, threshold = 20, verbose = TRUE)
 }
 \arguments{
 \item{input}{xts of relative humidity, or list from a previous QC level.}
 
-\item{spike_dt}{Half window in time steps.}
+\item{dt}{Half window in time steps.}
 
-\item{spike_diff}{Threshold in percent relative humidity.}
+\item{threshold}{Minimum deviation in percent relative humidity.}
 
 \item{verbose}{Report the tally.}
 }
@@ -19,9 +19,10 @@ RH_QC_3_spike(input, spike_dt = 3, spike_diff = 20, verbose = TRUE)
 The chain list with qc_data, qc_data_flagged and qc_info.
 }
 \description{
-Same triple condition as temperature level 3: a value is objected to only
-if it deviates by at least `spike_diff` from the median of the surrounding
-window AND from the values before it AND from the values after it.
+Same triple condition as temperature level 3, via the shared
+`qc_find_spikes()`: a value is objected to only if it deviates by at least
+`threshold` from the median of the surrounding window AND from the values
+before it AND from the values after it.
 Thunderstorm outflow moves the humidity by 30 percent within half an hour -
 but as a step, not as a single isolated point, so the triple condition
 preserves such fronts.

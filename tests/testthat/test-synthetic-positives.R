@@ -28,3 +28,73 @@ test_that("level 7 catches a spatiotemporal spike on a dense network", {
   expect_equal(unname(f[2000, 3]), 7)
   expect_equal(sum(f == 7, na.rm = TRUE), 1)
 })
+
+test_that("qc_find_spikes flags an isolated spike, keeps a front, refuses thin context", {
+  base <- c(18.0, 18.2, 18.1, 18.3, 18.4, 18.2, 18.5, 18.3, 18.1, 18.0)
+  spike <- base; spike[5] <- 30
+  sp <- qc_find_spikes(spike, dt = 3, threshold = 6)
+  expect_equal(which(sp$hit), 5L)
+  expect_equal(which(sp$judged), 2:9)                    # ends never judged
+  front <- c(18.0, 18.2, 18.1, 18.3, 30.0, 30.2, 30.1, 30.3, 30.0, 30.2)
+  expect_false(any(qc_find_spikes(front, dt = 3, threshold = 6)$hit))
+  thin <- c(18.0, 18.2, NA, NA, 30, NA, NA, 18.5, 18.3, 18.1)
+  th <- qc_find_spikes(thin, dt = 3, threshold = 6)
+  expect_false(any(th$hit)); expect_false(th$judged[5])   # refused, not acquitted
+  # the two levels reach the same verdict through the same code
+  ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = 10)
+  x <- xts::xts(matrix(spike, ncol = 1, dimnames = list(NULL, "S1")), order.by = ti)
+  t3  <- T_QC_3_time_consistency(x, verbose = FALSE)
+  rh3 <- RH_QC_3_spike(x, threshold = 6, verbose = FALSE)
+  expect_equal(unname(zoo::coredata(t3$qc_data_flagged)[5, 1]), 3)
+  expect_equal(unname(zoo::coredata(rh3$qc_data_flagged)[5, 1]), 3)
+})
+
+test_that("qc_window_points converts durations and refuses what cannot work", {
+  expect_equal(qc_window_points("6 hours", 600), 37L)
+  expect_equal(qc_window_points("6 h", 600), 37L)
+  expect_equal(qc_window_points(as.difftime(90, units = "mins"), 600), 10L)
+  expect_equal(qc_window_points("2 days", 600), 289L)
+  expect_warning(w <- qc_window_points("45 mins", 600), "using 4 steps")
+  expect_equal(w, 5L)
+  expect_error(qc_window_points("3 weeks!", 600), "should be one of")
+  expect_error(qc_window_points("6h", 600), "must look like")
+  expect_error(qc_window_points("10 mins", 600), "need at least 2")
+})
+
+test_that("qc_find_stuck flags a constant block, respects the guard and the exemption", {
+  set.seed(4)
+  v <- 20 + sin(seq_len(200) / 15) + rnorm(200, 0, 0.05)
+  v[80:125] <- 24                                        # 46 stuck points, window 37
+  st <- qc_find_stuck(v, width = 37, sd_tol = 0, min_valid = 19)
+  expect_equal(which(st$hit), 80:125)
+  expect_true(all(st$judged))                            # a full series: every point judged
+  # a block shorter than the window is invisible
+  v2 <- v; v2[80:125] <- 20 + sin(80:125 / 15); v2[100:130] <- 24
+  expect_false(any(qc_find_stuck(v2, 37, 0, 19)$hit))
+  # two identical survivors in an otherwise empty window do not count
+  v3 <- v; v3[60:100] <- NA; v3[101:102] <- 21.5
+  s3 <- qc_find_stuck(v3, 37, 0, 19)
+  expect_false(any(s3$hit))
+  expect_false(any(s3$judged[60:100]))                   # gaps are never "judged"
+  # the saturation exemption: the same constant block at 97 is not judged at all
+  v4 <- v; v4[80:125] <- 97
+  expect_true(any(qc_find_stuck(v4, 37, 0, 19)$hit))
+  s4 <- qc_find_stuck(v4, 37, 0, 19, exempt_above = 95)
+  expect_false(any(s4$hit)); expect_false(s4$judged[100])
+  # a series with fewer values than one window IS judged when a window still
+  # holds min_valid of them (the guard counts min_valid, not width)
+  v5 <- c(rep(20, 25), rep(NA, 40))
+  expect_equal(which(qc_find_stuck(v5, 37, 0, 19)$hit), 1:25)
+})
+
+test_that("qc_fill_gaps fills short gaps, codes refills by level, leaves long gaps and ends", {
+  X <- matrix(c(1, NA, 3, NA, NA, NA, NA, NA, NA, 10, 11, NA), ncol = 1, dimnames = list(NULL, "S1"))
+  F <- matrix(c(0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, NA), ncol = 1, dimnames = list(NULL, "S1"))
+  r <- qc_fill_gaps(X, F, maxgap = 5, refill_flagged = TRUE)
+  expect_equal(unname(r$X[2, 1]), 2); expect_equal(unname(r$previous_flag[2, 1]), 53)   # spike refilled
+  expect_true(all(is.na(r$X[4:9, 1])))                                  # 6-gap > maxgap
+  expect_true(is.na(r$X[12, 1]))                                        # end never extrapolated
+  expect_equal(c(r$n_gap, r$n_ref), c(0, 1))
+  r2 <- qc_fill_gaps(X, F, maxgap = 5, refill_flagged = FALSE)
+  expect_true(is.na(r2$X[2, 1])); expect_equal(unname(r2$previous_flag[2, 1]), 3)  # protected
+})

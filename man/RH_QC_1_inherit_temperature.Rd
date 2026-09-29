@@ -14,15 +14,14 @@ RH_QC_1_inherit_temperature(
 \arguments{
 \item{input}{xts of relative humidity, or list from a previous QC level.}
 
-\item{temperature_flags}{The temperature run's flag matrix: an `xts`, a
-plain matrix, or the whole result list of the temperature chain - then
-its `qc_data_flagged` is taken AND its `qc_info` records are merged into
-this chain, so the finished humidity object documents both runs. NULL
-(default) means no inheritance.}
+\item{temperature_flags}{The temperature run: its result list (preferred;
+its `qc_data_flagged` is taken and its `qc_info` records are merged in,
+so the finished humidity object documents both runs) or its flag matrix
+as an `xts` with logger names. NULL (default) means no inheritance.}
 
 \item{inherit_gapfill}{Also inherit the plain gap-fill code 50.}
 
-\item{verbose}{Report the tally.}
+\item{verbose}{Report the tally and the overlap.}
 }
 \value{
 The chain list with qc_data, qc_data_flagged and qc_info.
@@ -30,34 +29,21 @@ The chain list with qc_data, qc_data_flagged and qc_info.
 \description{
 Temperature and relative humidity usually come from the same chip, so any
 fault that corrupts the temperature corrupts the humidity as well. This
-level therefore carries the objections of the temperature run over to the
-humidity series. The inheritance is one-directional by design: a humidity
-flag is never pushed back onto the temperature.
+level carries the objections of the temperature run over to the humidity
+series - cell by cell, wherever a humidity cell has a temperature flag with
+EXACTLY the same time stamp and the same logger name. Cells without such a
+match are left alone. The inheritance is one-directional by design.
 }
 \details{
-Which temperature codes are inherited: every code above 0 counts as "this
-cell failed a test", including the interpolation REFILL codes 51-58, which
-mark cells a QC level had removed. The plain gap-fill code 50 is NOT
-inherited by default - a missing temperature reading is not evidence
-against the humidity reading. Set `inherit_gapfill = TRUE` to include it.
-
-The mask must describe THE SAME dataset: identical number of time steps,
-identical time index, identical station set. Anything else aborts, because
-a silently misaligned mask flags the wrong cells and nothing looks wrong
-afterwards. Column ORDER may differ - it is aligned by name.
-
-Like every level, this one runs standalone. Called WITHOUT
-`temperature_flags` it does nothing, says so, and records the refusal in
-`qc_info` - so a humidity chain can be run before its temperature
-counterpart exists without the result silently pretending inheritance had
-happened.
+Without a usable temperature mask (none given, no time index, no logger
+names, not a flag matrix, or no overlap at all) the level says so, records
+it, and hands the pair back unchanged so the remaining levels can run.
 }
 \examples{
 \dontrun{
-t_res  <- T_QC_8_diurnal_range(t_res)          # the finished temperature run
+t_res  <- run_qc_temperature(t_xts, metadata = meta)
 rh_res <- RH_QC_1_inherit_temperature(rh_xts, temperature_flags = t_res)
-
-rh_res <- RH_QC_1_inherit_temperature(rh_xts)  # standalone: no inheritance
+rh_res <- RH_QC_1_inherit_temperature(rh_xts)   # standalone: no inheritance
 }
 
 }

@@ -4,27 +4,18 @@
 \alias{RH_QC_8_interpolate}
 \title{Humidity QC Level 8 (optional): linear gap interpolation}
 \usage{
-RH_QC_8_interpolate(
-  input,
-  maxgap = 5,
-  refill_flagged = TRUE,
-  base_code = 50,
-  verbose = TRUE
-)
+RH_QC_8_interpolate(input, maxgap = 5, refill_flagged = TRUE, verbose = TRUE)
 }
 \arguments{
-\item{input}{xts of relative humidity, or list from a previous QC level.
-A bare xts gets a fresh flag matrix, so every fill is then a plain gap
-fill; the refill codes only appear when the chain ran before.}
+\item{input}{xts of humidity, or list from a previous QC level. A bare
+xts gets a fresh flag matrix, so every fill is then a plain gap fill;
+the refill codes only appear when the chain ran before.}
 
 \item{maxgap}{Longest gap (in steps) that is filled (5 = 50 min at
 10-minute data).}
 
 \item{refill_flagged}{Also fill cells removed by the QC levels. If FALSE,
 QC removals stay NA and keep their original codes.}
-
-\item{base_code}{Code for a plain gap fill; refills get base_code + level.
-Must stay clear of the QC level codes (default 50).}
 
 \item{verbose}{Report what was ADDED.}
 }
@@ -33,15 +24,16 @@ The chain list with qc_data, qc_data_flagged and qc_info.
 }
 \description{
 NOT a quality test - this level ADDS values. It linearly interpolates gaps
-of at most `maxgap` steps. Keep it optional and OFF by default in any
-runner, because the underlying method paper states that QC only flags and
-never alters the original data; whoever publishes the interpolated series
-must say so and must document the codes.
+of at most `maxgap` steps, via the shared `qc_fill_gaps()`. Keep it
+optional and OFF by default in any runner, because the underlying method
+paper states that QC only flags and never alters the original data;
+whoever publishes the interpolated series must say so and must document
+the codes.
 }
 \details{
-Flag codes written here: `base_code` (50) for a filled plain gap, and
-`base_code + N` for a value that RH level N had removed and this level
-refilled - 51 therefore means "inherited from the temperature chain, then
+Flag codes written here, fixed by the convention: 50 for a filled plain
+gap, 50 + N for a value that level N had removed and this level refilled -
+51 therefore means "inherited from the temperature chain, then
 refilled", 53 "spike, refilled", and so on.
 }
 \examples{

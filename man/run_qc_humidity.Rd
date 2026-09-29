@@ -25,7 +25,7 @@ to skip it.}
 \item{interpolate}{Also run the optional level 8 gap interpolation.}
 
 \item{params}{Named list of per-level parameter overrides, keyed rh1..rh8,
-e.g. `list(rh3 = list(spike_diff = 15))`.}
+e.g. `list(rh3 = list(threshold = 15))`.}
 
 \item{verbose}{Passed to every level.}
 }
@@ -42,8 +42,9 @@ order and wires the temperature result into the three levels that use it.
 `temperature` is ideally the RESULT LIST of the temperature chain: level 1
 then inherits its flags, and levels 6 and 7 use its CLEANED series. A bare
 temperature xts also works for levels 6 and 7, but carries no flags - level
-1 is then skipped audibly. Without any temperature, levels 1, 6 and 7 are
-skipped audibly.
+1 then runs, inherits nothing, and says so. Levels 6 and 7 always run and
+skip themselves, with the reason in their record, when temperature or
+metadata are missing.
 }
 \examples{
 \dontrun{

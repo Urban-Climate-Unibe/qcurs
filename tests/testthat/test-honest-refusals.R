@@ -5,7 +5,7 @@ test_that("level 5 refuses a single-season campaign instead of inventing a clima
 })
 
 test_that("level 7 skips every Biel station and says so", {
-  i7 <- biel_chain()$res$qc_info$t7_spatiotemporal
+  i7 <- biel_chain()$res$qc_info$t7_spatiotemporal_consistency
   expect_equal(i7$n_flagged, 0)
   expect_length(i7$skipped, 7)
 })

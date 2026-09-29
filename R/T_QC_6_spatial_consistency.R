@@ -2,7 +2,18 @@
 #'
 #' Implements equations (1)-(4) of Amini et al. (2026): a value is removed when
 #' it deviates from the Gaussian-distance- and landuse-weighted consensus of
-#' its neighbours by more than max(k * sigma', delta).
+#' its neighbours by more than max(k * sigma', delta). The network geometry
+#' comes from the shared `qc_neighbour_weights()` (k-nearest cap AFTER the
+#' landuse masking, both forest spellings) and the test itself from the shared
+#' `qc_find_spatial_outliers()` (NO sigma gate), so both exist once for the
+#' temperature and the dewpoint level.
+#'
+#' Stations that never reach the minimum number of compatible valid
+#' neighbours are listed in `qc_info$t6_spatial_consistency$never_evaluated`,
+#' and `n_judged_by_station` counts the cells the test actually reached.
+#' A station this test cannot see is a coverage statement, not a clean bill.
+#' With fewer than `min_neighbours + 1` stations in data AND metadata the
+#' level skips itself, records why, and hands the pair back unchanged.
 #'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param metadata Data frame with columns ID, LAT, LON, Landuse. Stations are
@@ -39,109 +50,37 @@ T_QC_6_spatial_consistency <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature")
+  input <- qc_prepare_input(input, what = "temperature", level = "t6_spatial_consistency")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
-  # resolve the mode choice against the two allowed values
   landuse_mode <- match.arg(landuse_mode)
 
   #-------------------------------------------------------------------------------
-  # validate the parameters and the metadata, because misaligned metadata
-  # would put the objections on the wrong stations
+  # validate the parameters, because the caller may set them freely
 
-  # the multiplier and the floor must be positive
-  if (!is.numeric(k_sigma) || k_sigma <= 0)
-    stop("k_sigma must be a positive number.")
-  if (!is.numeric(abs_floor) || abs_floor <= 0)
-    stop("abs_floor must be a positive number of Kelvin.")
-  if (!is.numeric(radius_m) || radius_m <= 0)
-    stop("radius_m must be a positive distance in metres.")
-  if (!is.numeric(min_neighbours) || min_neighbours < 1)
-    stop("min_neighbours must be at least 1.")
+  if (!is.numeric(k_sigma) || k_sigma <= 0) stop("k_sigma must be a positive number.")
+  if (!is.numeric(abs_floor) || abs_floor <= 0) stop("abs_floor must be a positive number of Kelvin.")
+  if (!is.numeric(radius_m) || radius_m <= 0) stop("radius_m must be a positive distance in metres.")
+  if (!is.numeric(min_neighbours) || min_neighbours < 1) stop("min_neighbours must be at least 1.")
   if (!is.numeric(k_neighbours) || k_neighbours < min_neighbours)
     stop("k_neighbours must be at least min_neighbours.")
-
-  # the metadata are required for this level
   if (missing(metadata) || is.null(metadata))
     stop("This level needs the metadata (ID, LAT, LON, Landuse).")
-  # tolerate tibbles and friends
-  md <- as.data.frame(metadata)
-  # the four columns this level relies on
-  need <- c("ID", "LAT", "LON", "Landuse")
-  if (!all(need %in% names(md)))
-    stop(sprintf("Metadata must contain the columns %s.", paste(need, collapse = ", ")))
-  # coordinates must be numeric and present
-  if (!is.numeric(md$LAT) || !is.numeric(md$LON) || anyNA(md$LAT) || anyNA(md$LON))
-    stop("Metadata LAT/LON must be numeric and complete.")
-  # duplicated IDs would make the match ambiguous
-  if (anyDuplicated(md$ID)) stop("Metadata contains duplicated IDs.")
-
-  # only stations present in BOTH the data and the metadata can be used
-  ids <- intersect(colnames(x), md$ID)
-  # stations in the data without metadata can never be evaluated - say so once
-  missing_md <- setdiff(colnames(x), md$ID)
-  if (length(missing_md) > 0)
-    warning(sprintf("No metadata for: %s - these stations cannot be evaluated by this level.",
-                    paste(missing_md, collapse = ", ")))
-  # without at least min_neighbours + 1 stations the condition can never be met
-  if (length(ids) < min_neighbours + 1)
-    stop(sprintf("Only %d station(s) match data and metadata; need at least %d.",
-                 length(ids), min_neighbours + 1))
-  # align the metadata rows to the order of the used stations
-  md <- md[match(ids, md$ID), ]
-  # a missing landuse would silently produce zero weights; make it visible once
-  if (anyNA(md$Landuse) || any(!nzchar(md$Landuse))) {
-    bad <- md$ID[is.na(md$Landuse) | !nzchar(md$Landuse)]
-    warning(sprintf("No landuse for: %s - these stations get zero weight everywhere.",
-                    paste(bad, collapse = ", ")))
-    md$Landuse[is.na(md$Landuse)] <- ""
-  }
-  # number of stations actually used
-  ns <- length(ids)
 
   #-------------------------------------------------------------------------------
-  # build the static weight matrix: distance, landuse, THEN the k-nearest cap
+  # the network geometry, once (metadata validation lives in the helper)
 
-  # pairwise distance matrix in metres
-  D <- matrix(0, ns, ns, dimnames = list(ids, ids))
-  for (i in seq_len(ns)) for (j in seq_len(ns))
-    D[i, j] <- geosphere::distHaversine(c(md$LON[i], md$LAT[i]), c(md$LON[j], md$LAT[j]))
-  # a station is not its own neighbour
-  diag(D) <- NA
-  # Gaussian bandwidth: median pairwise distance of the DATA-BEARING network
-  sigma_d <- stats::median(D, na.rm = TRUE)
-  # equation (2), distance part; the diagonal becomes weight 0
-  W <- exp(-(D^2) / (2 * sigma_d^2)); W[is.na(W)] <- 0
-
-  # the green classes - BOTH forest spellings, see header
-  veg <- c("Vegetated Areas", "Forest", "Forests")
-  # landuse per station as plain character
-  lu <- as.character(md$Landuse)
-  # pairwise landuse factor lambda
-  LU <- outer(lu, lu, Vectorize(function(a, b) {
-    # identical non-empty class: full weight
-    if (a == b && nzchar(a)) return(1)
-    # graded mode only: vegetated/forest pairs get reduced weight
-    if (landuse_mode == "graded" && a %in% veg && b %in% veg) return(0.4)
-    # everything else: incompatible
-    0
-  }))
-  # combine distance and landuse
-  W <- W * LU
-
-  # the k-nearest cap, in the FIXED order: among the compatible stations only
-  for (i in seq_len(ns)) {
-    # candidates = landuse-compatible AND within the radius
-    cand <- which(W[i, ] > 0 & !is.na(D[i, ]) & D[i, ] <= radius_m)
-    # nothing compatible in range: this station gets no support at all
-    if (!length(cand)) { W[i, ] <- 0; next }
-    # keep the k nearest AMONG the compatible candidates
-    keep <- cand[order(D[i, cand])][seq_len(min(k_neighbours, length(cand)))]
-    # zero every slot that was not kept
-    W[i, setdiff(seq_len(ns), keep)] <- 0
+  net <- qc_neighbour_weights(metadata, colnames(x), radius_m, k_neighbours, landuse_mode)
+  # without at least min_neighbours + 1 stations the condition can never be
+  # met: not an error but a skip - say why, record it, hand the pair back
+  if (length(net$ids) < min_neighbours + 1) {
+    reason <- sprintf("only %d station(s) match data and metadata; need at least %d",
+                      length(net$ids), min_neighbours + 1)
+    if (isTRUE(verbose))
+      message("T6 spatial consistency: ", reason, " - level skipped, continuing with the next level.")
+    input$qc_info$t6_spatial_consistency <- list(n_flagged = 0L, skipped = TRUE, reason = reason)
+    return(input)
   }
-  # belt and braces: nothing beyond the radius ever keeps weight
-  W[!is.na(D) & D > radius_m] <- 0
 
   #-------------------------------------------------------------------------------
   # Perform QC Level 6
@@ -150,69 +89,29 @@ T_QC_6_spatial_consistency <- function(input,
   X <- coredata(x)
   # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
-  # count across all time steps
-  n_total <- 0
+  # the test itself lives in qc_find_spatial_outliers(), shared with RH_QC_7
+  res <- qc_find_spatial_outliers(X[, net$ids, drop = FALSE], net$W, k_sigma, abs_floor, min_neighbours)
+  # the verdict on the full grid: stations outside the network are never hit
+  hit <- matrix(FALSE, nrow(X), ncol(X), dimnames = dimnames(X))
+  hit[, net$ids] <- res$hit
+
+  # only cells that carry no earlier flag
+  mask <- hit & (is.na(previous_flag) | previous_flag == 0)
+  # how many cells this level objects to
+  n_total <- sum(mask)
   # per-station tally for the report
-  n_station <- stats::setNames(integer(ncol(X)), colnames(X))
-  # track the stations this test never reached - a blind spot is not a clean bill
-  never_evaluated <- stats::setNames(rep(TRUE, ns), ids)
+  n_station <- stats::setNames(colSums(mask), colnames(X))
+  # per-station coverage: cells the consensus test was applied to (0 outside the network)
+  n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
+  n_judged[net$ids] <- colSums(res$judged)
 
-  # iterate over all time steps: the weights are static, the data are not
-  for (t in seq_len(nrow(X))) {
-    # this time step across the used stations
-    v <- X[t, ids]
-    # validity mask as 0/1 for the matrix products
-    vm <- as.integer(!is.na(v))
-    # fewer than two values network-wide: nothing to compare
-    if (sum(vm) < 2) next
-    # NA-free copy so the matrix products stay defined
-    vf <- ifelse(is.na(v), 0, v)
-    # per station: total weight of its VALID neighbours (denominator of eq. 1)
-    wsum <- as.vector(W %*% vm)
-    # equation (1): weighted neighbour consensus
-    mu <- as.vector(W %*% (vm * vf)) / wsum
-    # a station without any weighted valid neighbour has no consensus
-    mu[wsum == 0] <- NA_real_
-    # per station: NUMBER of valid weighted neighbours
-    nn <- rowSums((W > 0) * matrix(vm, ns, ns, byrow = TRUE))
-    # who can be judged at this time step
-    judged <- !is.na(v) & !is.na(mu) & nn >= min_neighbours
-    if (!any(judged)) next
-    # these stations have been reached by the test at least once
-    never_evaluated[judged] <- FALSE
-    # neighbour values as a matrix: row i holds station i's view of the network
-    Xm <- matrix(rep(vf, each = ns), ns)
-    # each station's consensus, repeated across its row
-    Mm <- matrix(mu, ns, ns)
-    # validity mask matching Xm
-    vmm <- matrix(vm, ns, ns, byrow = TRUE)
-    # equation (3): weighted spread of the neighbours around the consensus
-    sig <- sqrt(rowSums((W * vmm) * (Xm - Mm)^2, na.rm = TRUE) / pmax(wsum, 1e-12))
-    # equation (4), pure: |v - mu| > max(k*sigma, delta) - NO extra gate
-    hit <- judged & (abs(v - mu) > pmax(k_sigma * sig, abs_floor))
-
-    # combine the verdict with THIS time step's flag row, restricted to the
-    # used stations: hit is a vector over ids, so it must meet a vector
-    mask <- hit & (is.na(previous_flag[t, ids]) | previous_flag[t, ids] == 0)
-    # which stations are objected to at this time step
-    n_found <- sum(mask, na.rm = TRUE)
-
-    # apply only if something was found
-    if (n_found > 0) {
-      # the station names behind the mask
-      hit_ids <- ids[which(mask)]
-      # blank the values so later levels never see them
-      X[t, hit_ids] <- NA
-      # record this level's code (6 = level 6, fixed by convention)
-      previous_flag[t, hit_ids] <- 6
-      # add the number of new flags to the counters
-      n_station[hit_ids] <- n_station[hit_ids] + 1L
-      n_total <- n_total + n_found
-    }
-  }
-
-  # write the matrices back into the xts shells, keeping index and column names
+  # apply only if something was found
   if (n_total > 0) {
+    # blank the objected values so later levels never see them
+    X[mask] <- NA
+    # record this level's code (6 = level 6, fixed by convention)
+    previous_flag[mask] <- 6
+    # write the matrices back into the xts shells, keeping index and column names
     x[]   <- X
     flg[] <- previous_flag
   }
@@ -220,13 +119,14 @@ T_QC_6_spatial_consistency <- function(input,
   #-------------------------------------------------------------------------------
   # report and hand the pair on to the next level
 
-  # report so a zero-hit run is visibly a run, not a skip - and name the blind spots
+  # the blind spots: stations the test never reached, including those outside the network
+  never_evaluated <- names(n_judged)[n_judged == 0]
   if (isTRUE(verbose)) {
     message(sprintf("T6 spatial consistency (max(%g*sigma, %g K), k=%d after landuse): %d flagged",
                     k_sigma, abs_floor, k_neighbours, n_total))
-    if (any(never_evaluated))
+    if (length(never_evaluated))
       message("  never evaluated (insufficient compatible neighbours): ",
-              paste(names(never_evaluated)[never_evaluated], collapse = ", "))
+              paste(never_evaluated, collapse = ", "))
   }
 
   # write the updated matrices back and append this level under its own name
@@ -234,13 +134,14 @@ T_QC_6_spatial_consistency <- function(input,
   input$qc_data_flagged                <- flg
   input$qc_info$t6_spatial_consistency <- list(n_flagged            = n_total,
                                                n_flagged_by_station = n_station,
-                                               sigma_d              = sigma_d,
+                                               n_judged_by_station  = n_judged,
+                                               sigma_d              = net$sigma_d,
                                                k_sigma              = k_sigma,
                                                abs_floor            = abs_floor,
                                                radius_m             = radius_m,
                                                k_neighbours         = k_neighbours,
                                                min_neighbours       = min_neighbours,
                                                landuse_mode         = landuse_mode,
-                                               never_evaluated      = names(never_evaluated)[never_evaluated])
+                                               never_evaluated      = never_evaluated)
   input
 }

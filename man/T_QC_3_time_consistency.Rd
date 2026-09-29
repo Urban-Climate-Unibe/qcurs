@@ -4,7 +4,7 @@
 \alias{T_QC_3_time_consistency}
 \title{Temperature QC Level 3: time consistency (isolated spikes)}
 \usage{
-T_QC_3_time_consistency(input, dt = 3, diff = 6, verbose = TRUE)
+T_QC_3_time_consistency(input, dt = 3, threshold = 6, verbose = TRUE)
 }
 \arguments{
 \item{input}{xts of temperature, or list from a previous QC level.}
@@ -12,7 +12,7 @@ T_QC_3_time_consistency(input, dt = 3, diff = 6, verbose = TRUE)
 \item{dt}{Half window in time steps (default is 3 which means +/-30 min at
 10-minute data).}
 
-\item{diff}{Threshold in Kelvin (default is 6 K).}
+\item{threshold}{Minimum deviation in Kelvin (default is 6 K).}
 
 \item{verbose}{Report the tally.}
 }

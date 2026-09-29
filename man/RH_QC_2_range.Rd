@@ -11,8 +11,7 @@ RH_QC_2_range(input, rh_min = 0, rh_max = 105, verbose = TRUE)
 
 \item{rh_min}{Lower physical bound in percent.}
 
-\item{rh_max}{Upper tolerance bound in percent; values in (100, rh_max]
-are clamped to 100, values above are objected to.}
+\item{rh_max}{Upper bound in percent, including the condensation tolerance.}
 
 \item{verbose}{Report the tally.}
 }
@@ -20,19 +19,17 @@ are clamped to 100, values above are objected to.}
 The chain list with qc_data, qc_data_flagged and qc_info.
 }
 \description{
-Readings marginally above 100 percent are common in condensation because of
-calibration tolerance and are physically meaningful, so values between 100
-and `rh_max` are CLAMPED to 100 rather than discarded. Below `rh_min` and
-above `rh_max` is impossible and objected to. Set `rh_max = 100` for a hard
-cut without the tolerance zone.
-}
-\details{
-The clamping is an alteration of the data and is therefore reported and
-recorded (`n_clamped`) with the same visibility as the objections.
+Objects to values outside `[rh_min, rh_max]`. Readings a few percent above
+100 are common in condensation because of calibration tolerance and are
+physically meaningful, so the default ceiling is 105 rather than 100. They
+are kept as measured and unflagged - this level never clamps. Whoever wants
+a hard cap at 100 for display or publication does that in the analysis
+script.
 }
 \examples{
 \dontrun{
 res <- RH_QC_2_range(res)
+res <- RH_QC_2_range(res, rh_max = 100)   # no tolerance zone
 }
 
 }

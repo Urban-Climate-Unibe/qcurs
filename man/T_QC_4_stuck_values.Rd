@@ -18,8 +18,7 @@ T_QC_4_stuck_values(
 
 \item{window_size}{Window length, either a `difftime` (e.g.
 `as.difftime(6, units = "hours")`) or a string "<n> <unit>" with a unit
-`as.difftime()` understands - secs, mins, hours, days, weeks, abbreviated
-as far as it stays unambiguous ("6 h" works, "6 m" is mins).}
+`as.difftime()` understands - secs, mins, hours, days, weeks.}
 
 \item{na_tolerance_frac}{Maximum fraction of NA a window may contain and
 still be judged (paper: up to 50 percent).}
@@ -36,7 +35,20 @@ alternating between two adjacent quantisation steps.}
 The chain list with qc_data, qc_data_flagged and qc_info.
 }
 \description{
-Removes windows in which the sensor shows no variation at all.
+Removes windows in which the sensor shows no variation at all. Via the
+shared `qc_find_stuck()`: a window is judged only if it is sufficiently
+populated - the guard whose absence in the published chain deleted whole
+windows from two surviving identical readings - and the objected region
+is expanded by position, never via time strings.
+}
+\details{
+The window is also the DETECTION DELAY: a stuck sensor looks fine until
+the window is full, then the whole block is flagged retroactively. The
+shortest safe window is the longest stretch over which genuine temperature
+stays constant at the sensor's resolution - about 40 minutes at 0.01 K on
+the Biel summer data, 2 hours at 0.1 K, and 10 hours at 0.5 K. The 6-hour
+default follows the paper; shorten it per campaign, and check winter data
+first, where fog and inversions produce far longer genuine plateaus.
 }
 \examples{
 \dontrun{

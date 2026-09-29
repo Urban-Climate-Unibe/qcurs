@@ -26,7 +26,7 @@ T_QC_1_gross_error <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature")
+  input <- qc_prepare_input(input, what = "temperature", level = "t1_gross_error")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -57,6 +57,8 @@ T_QC_1_gross_error <- function(input,
   n_total <- sum(mask)
   # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
+  # per-station coverage: every cell that held a value was judged
+  n_judged <- stats::setNames(colSums(!is.na(X)), colnames(X))
 
   # apply only if something was found
   if (n_total > 0) {
@@ -82,6 +84,7 @@ T_QC_1_gross_error <- function(input,
   input$qc_data_flagged        <- flg
   input$qc_info$t1_gross_error <- list(n_flagged            = n_total,
                                        n_flagged_by_station = n_station,
+                                       n_judged_by_station  = n_judged,
                                        threshold_max        = threshold_max,
                                        threshold_min        = threshold_min)
   input

@@ -6,7 +6,7 @@
 \usage{
 RH_QC_6_decoupling(
   input,
-  temperature,
+  temperature = NULL,
   decouple_r = -0.3,
   decouple_trange = 3,
   decouple_min_n = 60,
@@ -16,10 +16,9 @@ RH_QC_6_decoupling(
 \arguments{
 \item{input}{xts of relative humidity, or list from a previous QC level.}
 
-\item{temperature}{The station temperatures: an xts with the same time
-index, or the whole result list of the temperature chain (its cleaned
-`qc_data` is taken). Stations are matched by name; humidity stations
-without a temperature twin are skipped and reported.}
+\item{temperature}{The temperature run: its result list (preferred; its
+CLEANED `qc_data` is taken) or a temperature xts with logger names.
+NULL (default) skips the level.}
 
 \item{decouple_r}{Correlation at or above which a day counts as decoupled
 (healthy days are strongly negative).}
@@ -44,10 +43,14 @@ of temperature level 8: it needs no neighbours and therefore also covers
 stations the spatial tests cannot reach.
 }
 \details{
-Days with less than `decouple_trange` of temperature amplitude are skipped,
-because without a diurnal cycle the correlation is meaningless - fog days
-would otherwise be flagged. The verdict is per day: all valid humidity
-values of a decoupled day are objected to.
+The temperature is matched cell by cell, by exact time stamp and logger
+name (`qc_match_grid()`, the same rule as levels 1 and 7); a cell without
+a temperature twin is not judged. Days with less than `decouple_trange` of
+temperature amplitude are skipped, because without a diurnal cycle the
+correlation is meaningless - fog days would otherwise be flagged. The
+verdict is per day: all valid humidity values of a decoupled day are
+objected to. Without any usable temperature the level says so, records
+it, and hands the pair back unchanged.
 }
 \examples{
 \dontrun{

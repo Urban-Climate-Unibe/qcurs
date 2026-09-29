@@ -1,12 +1,23 @@
 #' Temperature QC Level 4: stuck values
 #'
-#' Removes windows in which the sensor shows no variation at all.
+#' Removes windows in which the sensor shows no variation at all. Via the
+#' shared `qc_find_stuck()`: a window is judged only if it is sufficiently
+#' populated - the guard whose absence in the published chain deleted whole
+#' windows from two surviving identical readings - and the objected region
+#' is expanded by position, never via time strings.
+#'
+#' The window is also the DETECTION DELAY: a stuck sensor looks fine until
+#' the window is full, then the whole block is flagged retroactively. The
+#' shortest safe window is the longest stretch over which genuine temperature
+#' stays constant at the sensor's resolution - about 40 minutes at 0.01 K on
+#' the Biel summer data, 2 hours at 0.1 K, and 10 hours at 0.5 K. The 6-hour
+#' default follows the paper; shorten it per campaign, and check winter data
+#' first, where fog and inversions produce far longer genuine plateaus.
 #'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param window_size Window length, either a `difftime` (e.g.
 #'   `as.difftime(6, units = "hours")`) or a string "<n> <unit>" with a unit
-#'   `as.difftime()` understands - secs, mins, hours, days, weeks, abbreviated
-#'   as far as it stays unambiguous ("6 h" works, "6 m" is mins).
+#'   `as.difftime()` understands - secs, mins, hours, days, weeks.
 #' @param na_tolerance_frac Maximum fraction of NA a window may contain and
 #'   still be judged (paper: up to 50 percent).
 #' @param min_non_na Minimum valid values a window needs (paper: 5).
@@ -34,7 +45,7 @@ T_QC_4_stuck_values <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature")
+  input <- qc_prepare_input(input, what = "temperature", level = "t4_stuck_values")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -53,49 +64,21 @@ T_QC_4_stuck_values <- function(input,
     stop("sd_tol must be zero or a positive variation.")
 
   #-------------------------------------------------------------------------------
-  # derive the window width in points from the resolution of the dataset
+  # the window in points, and the population guard as ONE minimum count
 
-  # take the dominant time step the standard preamble determined for us
-  step_min <- input$qc_info$dataset_temperature$time_step_sec / 60
-  # a single-row series has no resolution; refuse instead of guessing
-  if (!is.finite(step_min) || step_min <= 0)
-    stop("Cannot determine the time step of the series (need at least two time stamps).")
-  # the window length in minutes.
-  if (inherits(window_size, "difftime")) {
-    win_min <- as.numeric(window_size, units = "mins")
-  } else {
-    parts <- strsplit(trimws(window_size), "\\s+")[[1]]
-    if (length(parts) != 2) stop("window_size must look like '6 hours' or '90 mins'.")
-    unit <- match.arg(tolower(parts[2]), c("secs", "mins", "hours", "days", "weeks"))
-    num  <- suppressWarnings(as.numeric(parts[1]))
-    if (!is.finite(num) || num <= 0)
-      stop(sprintf("'%s' is not a positive number of %s.", parts[1], unit))
-    win_min <- as.numeric(as.difftime(num, units = unit), units = "mins")
-  }
-  # window length in points, right-aligned including the end point:
-  # 6 h at 10-min data = 36 intervals = 37 points
-  n_steps <- win_min / step_min
-  # a window that is not a whole number of steps cannot be used --> round
-  if (abs(n_steps - round(n_steps)) > 1e-9)
-    warning(sprintf("window_size '%s' is %.2f time steps at a %g min resolution; using %d steps (%g min).",
-                    window_size, n_steps, step_min, round(n_steps), round(n_steps) * step_min))
-  width <- as.integer(round(n_steps)) + 1
-  if (width < 3)
-    stop(sprintf("window_size '%s' is only %d time steps at a %g min resolution; need at least 2.",
-                 window_size, width - 1, step_min))
-  # a window shorter than min_non_na points can never hold enough valid values:
-  # the test would run and flag nothing, silently. Refuse instead.
-  if (width < min_non_na)
-    stop(sprintf("window_size '%s' holds only %d points at a %g min resolution, but min_non_na = %d. Use a longer window or a smaller min_non_na.",
-                 if (inherits(window_size, "difftime")) format(window_size) else window_size,
-                 width, step_min, min_non_na))
-  # absolute NA budget derived from the fraction
-  max_na <- floor(na_tolerance_frac * width)
+  width <- qc_window_points(window_size, input$qc_info$dataset_temperature$time_step_sec, "window_size")
+  # "at most na_tolerance_frac NA" and "at least min_non_na valid" are both
+  # lower bounds on the valid count; the stricter one applies
+  min_valid <- max(min_non_na, width - floor(na_tolerance_frac * width))
+  # a window that can never hold enough valid values would flag nothing, silently
+  if (min_valid > width)
+    stop(sprintf("window_size gives only %d points, but min_non_na = %d. Use a longer window or a smaller min_non_na.",
+                 width, min_non_na))
 
   #-------------------------------------------------------------------------------
   # Perform QC Level 4
 
-  # plain numeric matrix of the values (time in rows, stations in columns).
+  # plain numeric matrix of the values (time in rows, stations in columns)
   X <- coredata(x)
   # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
@@ -103,38 +86,19 @@ T_QC_4_stuck_values <- function(input,
   n_total <- 0
   # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
+  # per-station coverage: cells inside at least one judged window
+  n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
 
   # iterate over all stations (columns)
   for (s in colnames(X)) {
-    # extract data vector of this station and determine its length
-    v <- X[, s]; n <- length(v)
-    # a station with fewer values than one window can never be judged: skip it
-    if (sum(!is.na(v)) < width) next
-    # create a vector with length n. All entries are FALSE
-    hit <- rep(FALSE, n)
+    # extract data vector of this station
+    v <- X[, s]
+    # the search itself lives in qc_find_stuck(), shared with RH_QC_5
+    st <- qc_find_stuck(v, width, sd_tol, min_valid)
+    n_judged[s] <- sum(st$judged & !is.na(v))
 
-    # rolling variation of the window ENDING at each point
-    sdv <- zoo::rollapply(v, width, function(z) stats::sd(z, na.rm = TRUE),
-                          align = "right", fill = NA)
-    # rolling NA count of the same windows
-    nna <- zoo::rollapply(v, width, function(z) sum(is.na(z)),
-                          align = "right", fill = NA)
-    # rolling count of valid values in the same windows
-    nok <- width - nna
-    # window ends that show (near) zero variation, respect the NA budget, and
-    # hold enough valid values for the verdict to mean anything
-    ends <- which(!is.na(sdv) & sdv <= sd_tol & nna <= max_na & nok >= min_non_na)
-    # nothing stuck at this station
-    if (!length(ends)) next
-    # expand each window end back over its width, BY POSITION (never via time
-    # strings), and mark those positions in the verdict vector
-    pos <- unique(unlist(lapply(ends, function(i) max(1, i - width + 1):i)))
-    hit[pos] <- TRUE
-
-    # combine the verdict with THIS station's column only: hit is a vector of
-    # length n, so it must meet vectors, not the whole matrix
-    mask <- hit & !is.na(v) &
-      (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
+    # combine the verdict with THIS station's column only
+    mask <- st$hit & !is.na(v) & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
     # how many cells this level objects to at this station
     n_found <- sum(mask)
 
@@ -161,17 +125,19 @@ T_QC_4_stuck_values <- function(input,
 
   # report so a zero-hit run is visibly a run, not a skip
   if (isTRUE(verbose))
-    message(sprintf("T4 stuck values (%s = %d points, NA budget %d, min valid %d): %d flagged",
+    message(sprintf("T4 stuck values (%s = %d points, min valid %d, sd <= %g): %d flagged",
                     if (inherits(window_size, "difftime")) format(window_size) else window_size,
-                    width, max_na, min_non_na, n_total))
+                    width, min_valid, sd_tol, n_total))
 
   # write the updated matrices back and append this level under its own name
   input$qc_data                 <- x
   input$qc_data_flagged         <- flg
   input$qc_info$t4_stuck_values <- list(n_flagged            = n_total,
                                         n_flagged_by_station = n_station,
+                                        n_judged_by_station  = n_judged,
                                         window_size          = window_size,
                                         width_points         = width,
+                                        min_valid            = min_valid,
                                         na_tolerance_frac    = na_tolerance_frac,
                                         min_non_na           = min_non_na,
                                         sd_tol               = sd_tol)

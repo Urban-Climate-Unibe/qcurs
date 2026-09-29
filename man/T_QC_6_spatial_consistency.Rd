@@ -43,7 +43,19 @@ The chain list with qc_data, qc_data_flagged and qc_info.
 \description{
 Implements equations (1)-(4) of Amini et al. (2026): a value is removed when
 it deviates from the Gaussian-distance- and landuse-weighted consensus of
-its neighbours by more than max(k * sigma', delta).
+its neighbours by more than max(k * sigma', delta). The network geometry
+comes from the shared `qc_neighbour_weights()` (k-nearest cap AFTER the
+landuse masking, both forest spellings) and the test itself from the shared
+`qc_find_spatial_outliers()` (NO sigma gate), so both exist once for the
+temperature and the dewpoint level.
+}
+\details{
+Stations that never reach the minimum number of compatible valid
+neighbours are listed in `qc_info$t6_spatial_consistency$never_evaluated`,
+and `n_judged_by_station` counts the cells the test actually reached.
+A station this test cannot see is a coverage statement, not a clean bill.
+With fewer than `min_neighbours + 1` stations in data AND metadata the
+level skips itself, records why, and hands the pair back unchanged.
 }
 \examples{
 \dontrun{

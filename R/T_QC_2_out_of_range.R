@@ -34,7 +34,7 @@ T_QC_2_out_of_range <- function(input,
 #-------------------------------------------------------------------------------
 # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature")
+  input <- qc_prepare_input(input, what = "temperature", level = "t2_out_of_range")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -93,6 +93,8 @@ T_QC_2_out_of_range <- function(input,
   n_total <- sum(mask)
   # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
+  # per-station coverage: every cell that held a value was judged
+  n_judged <- stats::setNames(colSums(!is.na(X)), colnames(X))
   # per-season tally: row(mask)[mask] gives the time index of every flagged cell
   n_season <- c(winter = 0L, spring = 0L, summer = 0L, autumn = 0L)
 
@@ -123,6 +125,7 @@ T_QC_2_out_of_range <- function(input,
   input$qc_data_flagged        <- flg
   input$qc_info$t2_out_of_range <- list(n_flagged            = n_total,
                                         n_flagged_by_station = n_station,
+                                        n_judged_by_station  = n_judged,
                                         n_flagged_by_season  = n_season,
                                         season_thresholds    = season_thresholds)
   input

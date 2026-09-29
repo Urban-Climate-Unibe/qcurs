@@ -28,12 +28,17 @@ T_QC_7_spatiotemporal_consistency(
 }
 \value{
 The chain list with qc_data, qc_data_flagged and qc_info. Stations
-  without a full neighbourhood are listed in
-  `qc_info$t7_spatiotemporal$skipped`.
+  without a full neighbourhood, or without a metadata row, are listed in
+  `qc_info$t7_spatiotemporal_consistency$skipped`.
 }
 \description{
 Removes values that are simultaneously extreme in space (against ALL nearby
 stations) and in time (against their own preceding and following steps).
+}
+\details{
+Stations are processed one after the other on the CURRENT matrix: a value
+this level removes at one station is already gone when a later station
+compares against it, so the column order can matter for borderline cases.
 }
 \examples{
 \dontrun{

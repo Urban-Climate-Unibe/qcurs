@@ -6,34 +6,39 @@
 \usage{
 RH_QC_7_dewpoint_consistency(
   input,
-  temperature,
-  metadata,
-  td_k = 6,
-  td_floor = 3,
-  td_radius_m = 3000,
-  td_k_neighbours = 5,
-  td_min_neighbours = 2,
+  temperature = NULL,
+  metadata = NULL,
+  k_sigma = 6,
+  abs_floor = 3,
+  radius_m = 3000,
+  k_neighbours = 5,
+  min_neighbours = 2,
+  landuse_mode = c("graded", "strict"),
   verbose = TRUE
 )
 }
 \arguments{
 \item{input}{xts of relative humidity, or list from a previous QC level.}
 
-\item{temperature}{The station temperatures: an xts with the same time
-index, or the whole result list of the temperature chain (its cleaned
-`qc_data` is taken). Stations are matched by name.}
+\item{temperature}{The temperature run: its result list (preferred; its
+CLEANED `qc_data` is taken) or a temperature xts with logger names.
+NULL (default) skips the level.}
 
-\item{metadata}{Data frame with columns ID, LAT, LON, Landuse.}
+\item{metadata}{Data frame with columns ID, LAT, LON, Landuse. NULL
+(default) skips the level.}
 
-\item{td_k}{Multiplier on the weighted neighbour spread of the dewpoint.}
+\item{k_sigma}{Multiplier k on the weighted neighbour spread of the dewpoint.}
 
-\item{td_floor}{Absolute floor in Kelvin of dewpoint deviation.}
+\item{abs_floor}{Absolute floor in Kelvin of dewpoint deviation.}
 
-\item{td_radius_m}{Maximum neighbour distance in metres.}
+\item{radius_m}{Maximum neighbour distance in metres.}
 
-\item{td_k_neighbours}{At most this many nearest COMPATIBLE neighbours.}
+\item{k_neighbours}{At most this many nearest COMPATIBLE neighbours.}
 
-\item{td_min_neighbours}{Minimum valid neighbours to judge at all.}
+\item{min_neighbours}{Minimum valid neighbours to judge at all.}
+
+\item{landuse_mode}{"graded" (same class 1.0, vegetated/forest pairs 0.4,
+else 0) or "strict" (same class only).}
 
 \item{verbose}{Report the tally and the never-evaluated stations.}
 }
@@ -44,17 +49,18 @@ The chain list with qc_data, qc_data_flagged and qc_info.
 The spatial comparison runs on the DEWPOINT, not on relative humidity: RH
 is spatially noisy because it carries the temperature field with it, while
 the dewpoint is a smooth tracer of the air mass. Dewpoint after Magnus with
-the Alduchov & Eskridge (1996) coefficients. The weighting mirrors
-temperature level 6 including all its fixes: k-nearest cap AFTER the
-landuse masking, NO sigma gate, both forest spellings. A "Td <= T" check is
-deliberately absent: with Td derived from T and RH it holds automatically
-for RH <= 100, and RH above 100 is caught by level 2.
+the Alduchov & Eskridge (1996) coefficients. Geometry and test are the
+shared `qc_neighbour_weights()` and `qc_find_spatial_outliers()` of
+temperature level 6, with all its fixes. A "Td <= T" check is deliberately
+absent: with Td derived from T and RH it holds automatically for RH <= 100.
 }
 \details{
-Objections land on the HUMIDITY cells: the dewpoint is only the yardstick,
-the humidity is the measured quantity under test. Stations that never reach
-the minimum number of compatible valid neighbours are listed in
-`qc_info$rh7_dewpoint_consistency$never_evaluated`.
+The temperature is matched cell by cell, by exact time stamp and logger
+name (`qc_match_grid()`); a cell without a temperature twin has no dewpoint
+and is not judged. Objections land on the HUMIDITY cells: the dewpoint is
+only the yardstick. Without a usable temperature, without metadata, or
+with fewer than three matched stations the level says so, records it, and
+hands the pair back unchanged so the chain can go on.
 }
 \examples{
 \dontrun{

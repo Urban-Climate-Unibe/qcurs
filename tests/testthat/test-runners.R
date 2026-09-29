@@ -64,10 +64,14 @@ test_that("run_qc_humidity skips audibly with a bare series or nothing", {
   f <- runner_fixture()
   # bare series: inheritance impossible, decoupling and dewpoint still run
   r1 <- run_qc_humidity(f$rh, temperature = f$tt, metadata = f$md, verbose = FALSE)
-  expect_identical(r1$qc_info$run_qc_humidity$levels_skipped, c("rh1", "rh8"))
+  expect_identical(r1$qc_info$run_qc_humidity$levels_skipped, "rh8")
+  expect_false(r1$qc_info$rh1_inherit_temperature$inherited)      # ran, inherited nothing
   expect_true("rh6_decoupling" %in% names(r1$qc_info))
-  # nothing: levels 1, 6, 7 skipped, the rest runs
+  # nothing: levels 1, 6, 7 skip themselves, the rest runs
   r0 <- run_qc_humidity(f$rh, verbose = FALSE)
-  expect_true(all(c("rh1", "rh6", "rh7", "rh8") %in% r0$qc_info$run_qc_humidity$levels_skipped))
+  expect_identical(r0$qc_info$run_qc_humidity$levels_skipped, "rh8")
+  expect_true(r0$qc_info$rh6_decoupling$skipped)                    # ran, skipped itself
+  expect_true(r0$qc_info$rh7_dewpoint_consistency$skipped)          # ran, skipped itself
+  expect_false(r0$qc_info$rh1_inherit_temperature$inherited)
   expect_true("rh4_saturation_drift" %in% names(r0$qc_info))
 })

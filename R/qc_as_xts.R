@@ -59,7 +59,7 @@ qc_as_xts <- function(x,
   if (length(time_col) != 1)
     stop("time_col must be ONE column (name or a positive natural number).")
   if (is.numeric(time_col)) {
-    # check whether the inut is a positive natural number and within the range
+    # check whether the input is a positive natural number and within the range
     if (time_col != round(time_col) || time_col < 1 || time_col > ncol(x))
       stop(sprintf("time_col = %s is not a column number between 1 and %d.", time_col, ncol(x)))
     # assign the exact column name of the time column

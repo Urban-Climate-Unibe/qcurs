@@ -1,7 +1,7 @@
 Package: qcurs
 Type: Package
 Title: Quality Control for Urban Temperature Sensor Networks
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: person("Patrick", "Kallabis", role = c("aut", "cre"),
     email = "patrick.kallabis@unibe.ch")
 Description: Quality-control chain for urban low-cost temperature and relative humidity
@@ -24,3 +24,4 @@ Imports:
 Suggests:
     testthat (>= 3.0.0)
 Config/roxygen2/version: 8.1.0
+RoxygenNote: 7.3.1
