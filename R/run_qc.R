@@ -78,12 +78,13 @@ run_qc_temperature <- function(input,
 #'
 #' Convenience wrapper around levels RH_QC_1 to RH_QC_7 (and optionally 8).
 #' Every level remains individually callable; this function only fixes the
-#' order and wires the temperature result into the three levels that use it.
+#' order and wires the temperature result into the three levels that use it
+#' (1, 5 and 7).
 #'
 #' `temperature` is ideally the RESULT LIST of the temperature chain: level 1
-#' then inherits its flags, and levels 6 and 7 use its CLEANED series. A bare
-#' temperature xts also works for levels 6 and 7, but carries no flags - level
-#' 1 then runs, inherits nothing, and says so. Levels 6 and 7 always run and
+#' then inherits its flags, and levels 5 and 7 use its CLEANED series. A bare
+#' temperature xts also works for levels 5 and 7, but carries no flags - level
+#' 1 then runs, inherits nothing, and says so. Levels 5 and 7 always run and
 #' skip themselves, with the reason in their record, when temperature or
 #' metadata are missing.
 #'
@@ -139,10 +140,10 @@ run_qc_humidity <- function(input,
                 list(temperature_flags = if (has_flags) temperature else NULL))
   input <- step(RH_QC_2_range,            "rh2")
   input <- step(RH_QC_3_spike,            "rh3")
-  input <- step(RH_QC_4_saturation_drift, "rh4")
-  input <- step(RH_QC_5_stuck_values,     "rh5")
-  # levels 6 and 7 always run: given what is there, each skips itself and says why
-  input <- step(RH_QC_6_decoupling, "rh6", list(temperature = temperature))
+  input <- step(RH_QC_4_stuck_values,     "rh4")
+  # levels 5 and 7 always run: given what is there, each skips itself and says why
+  input <- step(RH_QC_5_decoupling, "rh5", list(temperature = temperature))
+  input <- step(RH_QC_6_saturation_drift, "rh6")
   input <- step(RH_QC_7_dewpoint_consistency, "rh7",
                 list(temperature = temperature, metadata = metadata))
   # the interpolation alters the data: only on explicit request

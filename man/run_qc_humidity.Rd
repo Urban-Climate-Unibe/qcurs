@@ -36,13 +36,14 @@ The chain list with qc_data, qc_data_flagged and qc_info; skipped
 \description{
 Convenience wrapper around levels RH_QC_1 to RH_QC_7 (and optionally 8).
 Every level remains individually callable; this function only fixes the
-order and wires the temperature result into the three levels that use it.
+order and wires the temperature result into the three levels that use it
+(1, 5 and 7).
 }
 \details{
 `temperature` is ideally the RESULT LIST of the temperature chain: level 1
-then inherits its flags, and levels 6 and 7 use its CLEANED series. A bare
-temperature xts also works for levels 6 and 7, but carries no flags - level
-1 then runs, inherits nothing, and says so. Levels 6 and 7 always run and
+then inherits its flags, and levels 5 and 7 use its CLEANED series. A bare
+temperature xts also works for levels 5 and 7, but carries no flags - level
+1 then runs, inherits nothing, and says so. Levels 5 and 7 always run and
 skip themselves, with the reason in their record, when temperature or
 metadata are missing.
 }

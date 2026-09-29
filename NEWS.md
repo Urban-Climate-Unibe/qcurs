@@ -28,13 +28,21 @@ result RECORDS and how the edges behave.
   `min_neighbours + 1` stations match (it stopped the chain before), and both
   spatial temperature levels survive metadata that match no station at all
   (`subscript out of bounds` before).
-* `RH_QC_6_decoupling()` matches the temperature by exact time stamp and
+* `RH_QC_5_decoupling()` matches the temperature by exact time stamp and
   logger name through `qc_match_grid()`, like levels 1 and 7; a partial
   overlap is judged where it exists, no overlap skips the level. The
   row-count check is gone.
-* Calendar days in `T_QC_8` and `RH_QC_6` come from `format(index, "%Y-%m-%d")`,
+* Calendar days in `T_QC_8` and `RH_QC_5` come from `format(index, "%Y-%m-%d")`,
   which honours the index time zone on every R version (`as.Date()` only from
   R 4.3 on).
+
+## Template
+
+* `inst/rmarkdown/templates/qc-workflow`: an R Markdown template of the
+  whole workflow (`rmarkdown::draft(..., template = "qc-workflow",
+  package = "qcurs")`) - read, convert, one chunk per level with the
+  parameters written out, summary tables, plot, export; humidity part
+  switched on by setting `rh_file`.
 
 ## Structure
 
@@ -43,14 +51,19 @@ result RECORDS and how the edges behave.
   replaces the double loop.
 * `qc_find_spikes()`, `qc_find_stuck()`, `qc_find_spatial_outliers()` return
   `list(hit, judged)`.
-* `T_QC_8` and `RH_QC_6` split the rows by day once instead of comparing the
+* `T_QC_8` and `RH_QC_5` split the rows by day once instead of comparing the
   whole day vector per day (T8 on 52560 x 40: 2.1 s -> 0.5 s).
-* `run_qc_humidity()`: levels 6 and 7 always run and skip themselves;
+* `run_qc_humidity()`: levels 5 and 7 always run and skip themselves;
   `levels_skipped` lists only `rh8`.
 
 ## Breaking
 
+* Humidity levels 4-6 are renumbered: 4 = stuck values (was 5), 5 = decoupling
+  (was 6), 6 = saturation drift (was 4). Function names, `qc_info` keys and
+  flag codes follow the new numbers; a humidity flag matrix from 0.2.0 reads
+  differently in these three codes.
+
 * The `qc_info` key of level 7 is `t7_spatiotemporal_consistency`
   (was `t7_spatiotemporal`).
-* `RH_QC_6_decoupling()` no longer errors on a row mismatch.
+* `RH_QC_5_decoupling()` no longer errors on a row mismatch.
 * The three internal helpers return lists.

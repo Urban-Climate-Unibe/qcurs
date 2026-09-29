@@ -9,7 +9,7 @@
 #' median is at or above it is not judged, because in fog and continuous rain
 #' the humidity genuinely stops moving. Temperature passes NULL.
 #'
-#' Used by `T_QC_4_stuck_values()` and `RH_QC_5_stuck_values()`, so the
+#' Used by `T_QC_4_stuck_values()` and `RH_QC_4_stuck_values()`, so the
 #' search exists once and a correction reaches both levels.
 #'
 #' @param v Numeric vector of one station, NA for gaps.

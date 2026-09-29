@@ -1,0 +1,5 @@
+name: qcurs QC workflow (temperature + humidity)
+description: >
+  Step-by-step QC of one campaign: read, convert, run the temperature chain
+  level by level, then the humidity chain, look at the result, export.
+create_dir: false

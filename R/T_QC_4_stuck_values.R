@@ -93,7 +93,7 @@ T_QC_4_stuck_values <- function(input,
   for (s in colnames(X)) {
     # extract data vector of this station
     v <- X[, s]
-    # the search itself lives in qc_find_stuck(), shared with RH_QC_5
+    # the search itself lives in qc_find_stuck(), shared with RH_QC_4
     st <- qc_find_stuck(v, width, sd_tol, min_valid)
     n_judged[s] <- sum(st$judged & !is.na(v))
 

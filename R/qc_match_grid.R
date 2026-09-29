@@ -5,7 +5,7 @@
 #' and the same logger name. Everything else stays NA. No positional
 #' matching, no guessing.
 #'
-#' Used by `RH_QC_1_inherit_temperature()` (flags), `RH_QC_6_decoupling()`
+#' Used by `RH_QC_1_inherit_temperature()` (flags), `RH_QC_5_decoupling()`
 #' and `RH_QC_7_dewpoint_consistency()` (values).
 #'
 #' @param x The target xts (the humidity series).

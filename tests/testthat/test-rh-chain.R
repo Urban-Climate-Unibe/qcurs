@@ -20,11 +20,11 @@ rh_fixture <- function() {
   RH[500, 2] <- RH[500, 2] + 30
   # E4: fog day 8 (whole network saturated) with S3 drifting at ~80
   fog <- which(day == as.Date("2025-06-08"))
-  # on a real fog day the TEMPERATURE is flat too - otherwise RH6 would rightly
+  # on a real fog day the TEMPERATURE is flat too - otherwise RH5 would rightly
   # call the pinned humidity "decoupled"; the flat T triggers its trange skip
   TT[fog, ] <- 12 + matrix(rnorm(length(fog) * 4, 0, 0.3), ncol = 4)
   # the healthy stations sit NEAR-CONSTANT at 97: sd below sd_tol, so without
-  # the saturation exception RH5 would flag the whole fog day
+  # the saturation exception RH4 would flag the whole fog day
   RH[fog, ] <- 97 + matrix(rnorm(length(fog) * 4, 0, 0.05), ncol = 4)
   RH[fog, 3] <- 80 + rnorm(length(fog), 0, 0.5)
   # E5: stuck block at S4 (60.0 for 40 steps, well below saturation)
@@ -49,9 +49,9 @@ test_that("the humidity chain finds every planted error class", {
   f <- rh_fixture()
   r <- RH_QC_2_range(f$rh, verbose = FALSE)
   r <- RH_QC_3_spike(r, verbose = FALSE)
-  r <- RH_QC_4_saturation_drift(r, verbose = FALSE)
-  r <- RH_QC_5_stuck_values(r, verbose = FALSE)
-  r <- RH_QC_6_decoupling(r, temperature = f$tt, verbose = FALSE)
+  r <- RH_QC_4_stuck_values(r, verbose = FALSE)
+  r <- RH_QC_5_decoupling(r, temperature = f$tt, verbose = FALSE)
+  r <- RH_QC_6_saturation_drift(r, verbose = FALSE)
   r <- RH_QC_7_dewpoint_consistency(r, temperature = f$tt, metadata = f$md, verbose = FALSE)
   FLG <- zoo::coredata(r$qc_data_flagged)
 
@@ -59,39 +59,39 @@ test_that("the humidity chain finds every planted error class", {
   expect_equal(unname(zoo::coredata(r$qc_data)[20, 1]), 103) # tolerance value kept AS MEASURED
   expect_equal(unname(FLG[20, 1]), 0)                        # ... and unflagged: QC never alters data
   expect_equal(unname(FLG[500, 2]), 3)                       # spike
-  expect_gte(mean(FLG[f$fog, 3] == 4), 0.95)                 # saturation drifter
-  expect_true(all(FLG[2000:2039, 4] == 5))                   # stuck block
-  expect_gte(mean(FLG[f$dec, 2] == 6), 0.95)                 # decoupled day
+  expect_gte(mean(FLG[f$fog, 3] == 6), 0.95)                 # saturation drifter
+  expect_true(all(FLG[2000:2039, 4] == 4))                   # stuck block
+  expect_gte(mean(FLG[f$dec, 2] == 5), 0.95)                 # decoupled day
   expect_gte(mean(FLG[f$off, 1] == 7), 0.8)                  # dewpoint offset
   # the healthy remainder stays essentially untouched: total flags stay close
   # to the planted budget (fog drift + stuck + decoupled day + offset + slack)
   expect_lt(sum(FLG %in% 2:7, na.rm = TRUE),
             length(f$fog) + 40 + length(f$dec) + length(f$off) + 20)
   # every level left its record
-  expect_true(all(c("dataset_humidity", "rh2_range", "rh3_spike", "rh4_saturation_drift",
-                    "rh5_stuck_values", "rh6_decoupling", "rh7_dewpoint_consistency")
+  expect_true(all(c("dataset_humidity", "rh2_range", "rh3_spike", "rh4_stuck_values",
+                    "rh5_decoupling", "rh6_saturation_drift", "rh7_dewpoint_consistency")
                   %in% names(r$qc_info)))
 })
 
-test_that("the saturation exception keeps fog days unflagged in RH5", {
+test_that("the saturation exception keeps fog days unflagged in RH4", {
   f <- rh_fixture()
-  r5 <- RH_QC_5_stuck_values(f$rh, verbose = FALSE)
+  r5 <- RH_QC_4_stuck_values(f$rh, verbose = FALSE)
   # the fog day is near-constant at 97 but sits ABOVE sat_max: exempt
   expect_true(all(zoo::coredata(r5$qc_data_flagged)[f$fog, c(1, 2, 4)] == 0))
 })
 
-test_that("RH6 and RH7 accept the temperature chain result and refuse misalignment", {
+test_that("RH5 and RH7 accept the temperature chain result and refuse misalignment", {
   f <- rh_fixture()
   t_res <- T_QC_1_gross_error(f$tt, verbose = FALSE)
-  r <- RH_QC_6_decoupling(f$rh, temperature = t_res, verbose = FALSE)
-  expect_true("rh6_decoupling" %in% names(r$qc_info))
-  # RH6 matches by stamp and name like RH7: a shorter temperature series is
+  r <- RH_QC_5_decoupling(f$rh, temperature = t_res, verbose = FALSE)
+  expect_true("rh5_decoupling" %in% names(r$qc_info))
+  # RH5 matches by stamp and name like RH7: a shorter temperature series is
   # judged where it overlaps, and a foreign one skips the level
-  r6 <- RH_QC_6_decoupling(f$rh, temperature = f$tt[1:(5 * 144), ], verbose = FALSE)
-  expect_equal(r6$qc_info$rh6_decoupling$n_time_with_temperature, 5 * 144)
-  expect_true(all(r6$qc_info$rh6_decoupling$n_judged_by_station <= 5 * 144))
+  r6 <- RH_QC_5_decoupling(f$rh, temperature = f$tt[1:(5 * 144), ], verbose = FALSE)
+  expect_equal(r6$qc_info$rh5_decoupling$n_time_with_temperature, 5 * 144)
+  expect_true(all(r6$qc_info$rh5_decoupling$n_judged_by_station <= 5 * 144))
   foreign <- xts::xts(zoo::coredata(f$tt), order.by = zoo::index(f$tt) + 3600 * 24 * 400)
-  expect_true(RH_QC_6_decoupling(f$rh, temperature = foreign, verbose = FALSE)$qc_info$rh6_decoupling$skipped)
+  expect_true(RH_QC_5_decoupling(f$rh, temperature = foreign, verbose = FALSE)$qc_info$rh5_decoupling$skipped)
   expect_warning(
     r7 <- RH_QC_7_dewpoint_consistency(f$rh, temperature = f$tt, metadata = f$md[1:2, ], verbose = FALSE),
     "No metadata for")
@@ -135,7 +135,7 @@ test_that("RH1 inherits only where time stamp AND logger match, and skips otherw
   }
 })
 
-test_that("RH4 judges per segment and acquits a station that reaches saturation once", {
+test_that("RH6 judges per segment and acquits a station that reaches saturation once", {
   set.seed(1)
   ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = 40 * 144)
   RH <- matrix(70 + rnorm(length(ti) * 5, 0, 3), ncol = 5, dimnames = list(NULL, paste0("S", 1:5)))
@@ -144,8 +144,8 @@ test_that("RH4 judges per segment and acquits a station that reaches saturation 
   RH[fog1 | fog2, ] <- 97
   RH[fog1 | fog2, 3] <- 80                              # S3 drifts on both fog days
   RH[fog2, 4] <- 80; RH[which(fog2)[1:5], 4] <- 96      # S4 drifts but touches saturation 5 times
-  r <- RH_QC_4_saturation_drift(xts::xts(RH, order.by = ti), verbose = FALSE)
-  n <- r$qc_info$rh4_saturation_drift$n_flagged_by_station
+  r <- RH_QC_6_saturation_drift(xts::xts(RH, order.by = ti), verbose = FALSE)
+  n <- r$qc_info$rh6_saturation_drift$n_flagged_by_station
   expect_equal(unname(n[["S3"]]), 2 * 144)              # both segments, evidence steps only
   expect_equal(unname(n[["S4"]]), 0)                    # acquitted for the whole segment
   expect_equal(sum(n[c("S1", "S2", "S5")]), 0)

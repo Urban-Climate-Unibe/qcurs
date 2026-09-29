@@ -13,6 +13,8 @@ Description: Quality-control chain for urban low-cost temperature and relative h
     handling relative to the published pipeline of Amini et al. (2026),
     Scientific Data 13:658.
 License: MIT + file LICENSE
+URL: https://github.com/Urban-Climate-Unibe/qcurs
+BugReports: https://github.com/Urban-Climate-Unibe/qcurs/issues
 Encoding: UTF-8
 Depends: R (>= 4.1)
 Imports:

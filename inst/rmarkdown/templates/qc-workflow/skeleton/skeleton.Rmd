@@ -1,6 +1,6 @@
 ---
 title: "QC workflow - temperature and humidity"
-author: "Patrick Kallabis"
+author: ""
 date: "`r format(Sys.Date(), '%d.%m.%Y')`"
 output:
   html_document:
@@ -8,9 +8,16 @@ output:
     toc_depth: 2
 ---
 
-This is a template. Fill in the SETTINGS block, then knit or run chunk by chunk. Every level is its own chunk with its parameters written out, so what ran is what you see. The defaults are the package defaults; the ones you will most likely touch are marked `# <-`.
+This is a template. Fill in the SETTINGS block, then knit or run chunk by
+chunk. Every level is its own chunk with its parameters written out, so what
+ran is what you see. The defaults are the package defaults; the ones you
+will most likely touch are marked `# <-`.
 
-Out of the box it runs on the Biel summer 2025 campaign that ships with the package (temperature only). That file is the clean raw campaign, so expect no flags - the version with planted errors is `Biel_test_tidy.csv` in tidy layout, see `tests/testthat/helper-testdata.R` for the pivot. Point the paths at your own files; the humidity part runs as soon as `rh_file` is set.
+Out of the box it runs on the Biel summer 2025 campaign that ships with the
+package (temperature only). That file is the clean raw campaign, so expect
+no flags - the version with planted errors is `Biel_test_tidy.csv` in tidy
+layout, see `tests/testthat/helper-testdata.R` for the pivot. Point the
+paths at your own files; the humidity part runs as soon as `rh_file` is set.
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(message = TRUE, warning = TRUE, fig.width = 10, fig.height = 4)
@@ -53,7 +60,9 @@ dir.create(out_dir, showWarnings = FALSE)
 
 ## 1. Read and check
 
-The package does not read files. Read them here, look at them, and stop if the shape is wrong - a misread CSV is silent and everything downstream is wrong with it.
+The package does not read files. Read them here, look at them, and stop if
+the shape is wrong - a misread CSV is silent and everything downstream is
+wrong with it.
 
 ```{r t-read}
 t_raw <- read.csv(t_file, sep = csv_sep, dec = csv_dec, check.names = FALSE,
@@ -83,7 +92,9 @@ setdiff(colnames(t_x), md$ID)
 
 ## 3. The chain, level by level
 
-Every level takes the list the previous one returned and gives it back with its flags and its record added. Change a parameter, re-run from that chunk on.
+Every level takes the list the previous one returned and gives it back with
+its flags and its record added. Change a parameter, re-run from that chunk
+on.
 
 ```{r t1}
 t_res <- T_QC_1_gross_error(t_x,
@@ -216,7 +227,8 @@ if (length(codes[codes < 50]))
 
 ## 5. Export
 
-Cleaned series, flags and the record, side by side. The flag file is the audit trail; keep it with the data.
+Cleaned series, flags and the record, side by side. The flag file is the
+audit trail; keep it with the data.
 
 ```{r t-export}
 as_table <- function(x) data.frame(time = format(index(x), "%Y-%m-%d %H:%M:%S"), coredata(x),
@@ -232,7 +244,9 @@ list.files(out_dir)
 
 # Humidity
 
-Same logger IDs, same time stamps as the temperature. Cells without a temperature twin at exactly the same stamp are not judged by levels 1, 5 and 7.
+Same logger IDs, same time stamps as the temperature. Cells without a
+temperature twin at exactly the same stamp are not judged by levels 1, 5
+and 7.
 
 ```{r rh-read, eval = run_humidity}
 rh_raw <- read.csv(rh_file, sep = csv_sep, dec = csv_dec, check.names = FALSE,
@@ -325,7 +339,7 @@ saveRDS(rh_res, file.path(out_dir, "humidity_result.rds"))
 # Flag codes
 
 | code | temperature | humidity |
-|----|----|----|
+|---|---|---|
 | `NA` | no observation | no observation |
 | `0` | not objected by any level that reached the cell | same |
 | `1` | gross error | inherited from temperature |
@@ -335,7 +349,7 @@ saveRDS(rh_res, file.path(out_dir, "humidity_result.rds"))
 | `5` | climatic outlier | decoupled from own T |
 | `6` | spatial consensus | saturation drift |
 | `7` | spatiotemporal | dewpoint consensus |
-| `8` | diurnal range collapse | \- |
+| `8` | diurnal range collapse | - |
 | `50` | plain gap filled | same |
 | `50+N` | removed by N, refilled | same |
 
