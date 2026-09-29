@@ -1,0 +1,359 @@
+---
+title: "QC workflow - temperature and humidity"
+author: ""
+date: "`r format(Sys.Date(), '%d.%m.%Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+editor_options: 
+  markdown: 
+    wrap: 80
+---
+
+This is a template. Fill in the SETTINGS block, then knit or run chunk by chunk.
+Every level is its own chunk with its parameters written out, so what ran is
+what you see. The defaults are the package defaults; the ones you will most
+likely touch are marked `# <-`.
+
+Out of the box it runs on the Biel summer 2025 campaign that ships with the
+package (temperature only). That file is the clean raw campaign, so expect no
+flags - the version with planted errors is `Biel_test_tidy.csv` in tidy layout,
+see `tests/testthat/helper-testdata.R` for the pivot. Point the paths at your
+own files; the humidity part runs as soon as `rh_file` is set.
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(message = TRUE, warning = TRUE, fig.width = 10, fig.height = 4)
+library(qcurs)
+library(xts)
+```
+
+# Settings
+
+```{r settings}
+# ---- files -------------------------------------------------------------
+# temperature: wide table, one time column, one numeric column per logger
+t_file   <- system.file("extdata", "Biel_summer_2025_raw.csv", package = "qcurs")   # <-
+# humidity: same layout, same logger IDs; NULL if you have none
+rh_file  <- NULL                                                                     # <-
+# metadata: ID, LAT, LON, Landuse
+md_file  <- system.file("extdata", "metadata.csv", package = "qcurs")                # <-
+# where the results go
+out_dir  <- "qc_output"                                                              # <-
+
+# ---- how the files look --------------------------------------------------
+csv_sep     <- ";"
+csv_dec     <- "."
+time_col    <- "time"                # name or number of the time column
+time_format <- "%d.%m.%Y %H:%M"      # as in strptime()                             # <-
+tz          <- "UTC"
+
+# ---- which stations -------------------------------------------------------
+# keep only the metadata rows of this city (NULL = all rows)
+city        <- "BIEL"                                                                # <-
+
+# ---- what to run ------------------------------------------------------------
+run_humidity <- !is.null(rh_file)
+interpolate  <- FALSE   # T9 / RH8 add values; leave off unless you need filled gaps
+
+dir.create(out_dir, showWarnings = FALSE)
+```
+
+# Temperature
+
+## 1. Read and check
+
+The package does not read files. Read them here, look at them, and stop if the
+shape is wrong - a misread CSV is silent and everything downstream is wrong with
+it.
+
+```{r t-read}
+t_raw <- read.csv(t_file, sep = csv_sep, dec = csv_dec, check.names = FALSE,
+                  fileEncoding = "UTF-8-BOM")
+dim(t_raw)
+head(t_raw[, 1:min(6, ncol(t_raw))])
+# every logger column must be numeric; a decimal comma or a text column shows up here
+str(t_raw[, 1:min(6, ncol(t_raw))])
+```
+
+```{r t-convert}
+# xts with one column per logger; prints a conversion report
+t_x <- qc_as_xts(t_raw, time_col = time_col, time_format = time_format, tz = tz)
+```
+
+## 2. Metadata
+
+```{r metadata}
+md <- read.csv(md_file, sep = csv_sep, dec = csv_dec, stringsAsFactors = FALSE,
+               fileEncoding = "UTF-8-BOM")
+if (!is.null(city)) md <- md[md$City == city, ]
+stopifnot(all(c("ID", "LAT", "LON", "Landuse") %in% names(md)))
+table(md$Landuse)
+# loggers in the data without a metadata row cannot be judged by levels 6 and 7
+setdiff(colnames(t_x), md$ID)
+```
+
+## 3. The chain, level by level
+
+Every level takes the list the previous one returned and gives it back with its
+flags and its record added. Change a parameter, re-run from that chunk on.
+
+```{r t1}
+t_res <- T_QC_1_gross_error(t_x,
+                            threshold_max = 60,
+                            threshold_min = -40)
+```
+
+```{r t2}
+# seasonal bounds; summer_min is the one worth checking for cold rural sites
+t_res <- T_QC_2_out_of_range(t_res,
+                             summer_min = -5.85)                                      # <-
+```
+
+```{r t3}
+t_res <- T_QC_3_time_consistency(t_res,
+                                 dt = 3,          # half window in steps
+                                 threshold = 6)   # K
+```
+
+```{r t4}
+# the window is also the detection delay in live data; check winter plateaus
+# before shortening it
+t_res <- T_QC_4_stuck_values(t_res,
+                             window_size = "6 hours",                                 # <-
+                             na_tolerance_frac = 0.5,
+                             min_non_na = 5,
+                             sd_tol = 0)
+```
+
+```{r t5}
+# refuses on a single-season campaign; set require_multi_year = FALSE only if
+# you know what a one-year monthly IQR means for your data
+t_res <- T_QC_5_climatic_outliers(t_res,
+                                  ext_lim_factor = 4,
+                                  min_n = 300,
+                                  require_multi_year = TRUE)
+```
+
+```{r t6}
+t_res <- T_QC_6_spatial_consistency(t_res, metadata = md,
+                                    k_sigma = 6,
+                                    abs_floor = 3,        # K
+                                    radius_m = 3000,
+                                    k_neighbours = 5,
+                                    min_neighbours = 2,
+                                    landuse_mode = "graded")
+```
+
+```{r t7}
+t_res <- T_QC_7_spatiotemporal_consistency(t_res, metadata = md,
+                                           radius_m = 2500,
+                                           n_neighbours = 5,
+                                           threshold = 0.99)
+```
+
+```{r t8}
+t_res <- T_QC_8_diurnal_range(t_res,
+                              range_frac = 0.4,
+                              min_consecutive_days = 2,
+                              min_obs_per_day = 72,
+                              min_reference_days = 14)
+```
+
+```{r t9, eval = interpolate}
+# ADDS values. Codes 50 (plain gap) and 50 + level (removed, then refilled)
+t_res <- T_QC_9_interpolate(t_res,
+                            maxgap = 5,
+                            refill_flagged = TRUE)
+```
+
+## 4. What came out
+
+```{r qc-summary-fun, include = FALSE}
+# one row per level and station: flagged, judged, and judged as share of the values
+qc_summary <- function(res, chain = c("t", "rh")) {
+  chain <- match.arg(chain)
+  keys  <- grep(paste0("^", chain, "[0-9]_"), names(res$qc_info), value = TRUE)
+  rows  <- lapply(keys, function(k) {
+    r <- res$qc_info[[k]]
+    if (is.null(r$n_flagged_by_station)) return(NULL)   # skipped levels, interpolation
+    data.frame(level = k, station = names(r$n_flagged_by_station),
+               flagged = as.integer(r$n_flagged_by_station),
+               judged  = as.integer(r$n_judged_by_station), stringsAsFactors = FALSE)
+  })
+  out <- do.call(rbind, rows)
+  n_valid <- colSums(!is.na(coredata(res$qc_data)) | coredata(res$qc_data_flagged) > 0)
+  out$judged_pct <- round(100 * out$judged / n_valid[out$station], 1)
+  out
+}
+```
+
+```{r t-summary}
+FLG <- coredata(t_res$qc_data_flagged)
+# how many cells carry which code
+table(FLG, useNA = "ifany")
+# per level and station: what was flagged, and what the level actually looked at
+t_sum <- qc_summary(t_res, "t")
+# flagged
+xtabs(flagged ~ station + level, t_sum)
+# judged, as percent of the station's values - 0 means the level never reached it
+xtabs(judged_pct ~ station + level, t_sum)
+```
+
+Where a level was blind, by name:
+
+```{r t-refusals}
+t_res$qc_info$t5_climatic_outliers$refused
+t_res$qc_info$t6_spatial_consistency$never_evaluated
+t_res$qc_info$t7_spatiotemporal_consistency$skipped
+t_res$qc_info$t8_diurnal_range$skipped_stations
+```
+
+One station, raw against cleaned, flagged points coloured by level:
+
+```{r t-plot}
+station <- colnames(t_x)[1]                                                          # <-
+raw <- t_x[, station]; cln <- t_res$qc_data[, station]; f <- t_res$qc_data_flagged[, station]
+plot(index(raw), coredata(raw), type = "l", col = "grey70", xlab = "", ylab = "deg C",
+     main = station)
+lines(index(cln), coredata(cln), col = "black")
+codes <- sort(unique(coredata(f)[coredata(f) > 0 & !is.na(coredata(f))]))
+pal <- c("1" = "red", "2" = "orange", "3" = "purple", "4" = "blue", "5" = "brown",
+         "6" = "darkgreen", "7" = "magenta", "8" = "cyan4")
+for (cc in codes[codes < 50])
+  points(index(raw)[coredata(f) == cc], coredata(raw)[coredata(f) == cc], col = pal[as.character(cc)], pch = 16, cex = 0.6)
+if (length(codes[codes < 50]))
+  legend("topleft", legend = paste("level", codes[codes < 50]), col = pal[as.character(codes[codes < 50])],
+         pch = 16, bty = "n", ncol = 4)
+```
+
+## 5. Export
+
+Cleaned series, flags and the record, side by side. The flag file is the audit
+trail; keep it with the data.
+
+```{r t-export}
+as_table <- function(x) data.frame(time = format(index(x), "%Y-%m-%d %H:%M:%S"), coredata(x),
+                                   check.names = FALSE)
+write.csv(as_table(t_res$qc_data),         file.path(out_dir, "temperature_qc.csv"),       row.names = FALSE)
+write.csv(as_table(t_res$qc_data_flagged), file.path(out_dir, "temperature_flags.csv"),    row.names = FALSE)
+write.csv(t_sum,                            file.path(out_dir, "temperature_summary.csv"),  row.names = FALSE)
+saveRDS(t_res, file.path(out_dir, "temperature_result.rds"))   # the whole thing, qc_info included
+capture.output(str(t_res$qc_info, max.level = 2, give.attr = FALSE),
+               file = file.path(out_dir, "temperature_qc_info.txt"))
+list.files(out_dir)
+```
+
+# Humidity
+
+Same logger IDs, same time stamps as the temperature. Cells without a
+temperature twin at exactly the same stamp are not judged by levels 1, 6 and 7.
+
+```{r rh-read, eval = run_humidity}
+rh_raw <- read.csv(rh_file, sep = csv_sep, dec = csv_dec, check.names = FALSE,
+                   fileEncoding = "UTF-8-BOM")
+dim(rh_raw)
+rh_x <- qc_as_xts(rh_raw, time_col = time_col, time_format = time_format, tz = tz)
+# loggers with humidity but no temperature
+setdiff(colnames(rh_x), colnames(t_x))
+```
+
+```{r rh1, eval = run_humidity}
+# pass the WHOLE temperature result: the flags are inherited from it
+rh_res <- RH_QC_1_inherit_temperature(rh_x, temperature_flags = t_res,
+                                      inherit_gapfill = FALSE)
+```
+
+```{r rh2, eval = run_humidity}
+# up to 105 is kept: condensation tolerance of the element
+rh_res <- RH_QC_2_range(rh_res,
+                        rh_min = 0,
+                        rh_max = 105)
+```
+
+```{r rh3, eval = run_humidity}
+rh_res <- RH_QC_3_spike(rh_res,
+                        dt = 3,
+                        threshold = 20)   # percent RH
+```
+
+```{r rh4, eval = run_humidity}
+# a drifter stays below station_max while the network median sits above network_min
+rh_res <- RH_QC_4_saturation_drift(rh_res,
+                                   network_min = 95,
+                                   station_max = 90,
+                                   min_hits = 12,
+                                   min_stations = 3,
+                                   window_days = 30)                                  # <-
+```
+
+```{r rh5, eval = run_humidity}
+rh_res <- RH_QC_5_stuck_values(rh_res,
+                               window_size = "6 hours",                               # <-
+                               sd_tol = 0.1,
+                               sat_max = 95,          # constant at saturation is not a fault
+                               min_valid_frac = 0.5)
+```
+
+```{r rh6, eval = run_humidity}
+# uses the CLEANED temperature of t_res
+rh_res <- RH_QC_6_decoupling(rh_res, temperature = t_res,
+                             decouple_r = -0.3,
+                             decouple_trange = 3,
+                             decouple_min_n = 60)
+```
+
+```{r rh7, eval = run_humidity}
+rh_res <- RH_QC_7_dewpoint_consistency(rh_res, temperature = t_res, metadata = md,
+                                       k_sigma = 6,
+                                       abs_floor = 3,
+                                       radius_m = 3000,
+                                       k_neighbours = 5,
+                                       min_neighbours = 2,
+                                       landuse_mode = "graded")
+```
+
+```{r rh8, eval = run_humidity && interpolate}
+rh_res <- RH_QC_8_interpolate(rh_res,
+                              maxgap = 5,
+                              refill_flagged = TRUE)
+```
+
+```{r rh-summary, eval = run_humidity}
+table(coredata(rh_res$qc_data_flagged), useNA = "ifany")
+rh_sum <- qc_summary(rh_res, "rh")
+xtabs(flagged ~ station + level, rh_sum)
+xtabs(judged_pct ~ station + level, rh_sum)
+# which temperature levels the humidity inherited from (the RH code is always 1)
+rh_res$qc_info$rh1_inherit_temperature$n_flagged_by_t_code
+rh_res$qc_info$rh6_decoupling$skipped_stations
+rh_res$qc_info$rh7_dewpoint_consistency$never_evaluated
+```
+
+```{r rh-export, eval = run_humidity}
+write.csv(as_table(rh_res$qc_data),         file.path(out_dir, "humidity_qc.csv"),      row.names = FALSE)
+write.csv(as_table(rh_res$qc_data_flagged), file.path(out_dir, "humidity_flags.csv"),   row.names = FALSE)
+write.csv(rh_sum,                            file.path(out_dir, "humidity_summary.csv"), row.names = FALSE)
+saveRDS(rh_res, file.path(out_dir, "humidity_result.rds"))
+```
+
+# Flag codes
+
+| code   | temperature                                     | humidity                   |
+|--------|-------------------------------------------------|----------------------------|
+| `NA`   | no observation                                  | no observation             |
+| `0`    | not objected by any level that reached the cell | same                       |
+| `1`    | gross error                                     | inherited from temperature |
+| `2`    | seasonal range                                  | range 0-105                |
+| `3`    | spike                                           | spike                      |
+| `4`    | stuck                                           | saturation drift           |
+| `5`    | climatic outlier                                | stuck                      |
+| `6`    | spatial consensus                               | decoupled from own T       |
+| `7`    | spatiotemporal                                  | dewpoint consensus         |
+| `8`    | diurnal range collapse                          | \-                         |
+| `50`   | plain gap filled                                | same                       |
+| `50+N` | removed by N, refilled                          | same                       |
+
+```{r session}
+sessionInfo()
+```
