@@ -26,12 +26,6 @@ library(qcurs)
 
 While the repository is private, `remotes` needs a GitHub token: create one under GitHub \> Settings \> Developer settings \> Personal access tokens (scope `repo`) and put it in `~/.Renviron` as `GITHUB_PAT=...`, then restart R.
 
-From a downloaded tarball or zip:
-
-``` r
-remotes::install_local("qcurs_0.3.0.tar.gz")
-```
-
 Needs `xts`, `zoo`, `geosphere`; `remotes` installs them.
 
 ## Input

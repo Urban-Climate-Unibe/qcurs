@@ -12,13 +12,40 @@ This is a template. Fill in the SETTINGS block, then knit or run chunk by chunk.
 
 Out of the box it runs on the Biel summer 2025 campaign that ships with the package (temperature only). That file is the clean raw campaign, so expect no flags - the version with planted errors is `Biel_test_tidy.csv` in tidy layout, see `tests/testthat/helper-testdata.R` for the pivot. Point the paths at your own files; the humidity part runs as soon as `rh_file` is set.
 
+# Settings
+
+## Load Packages
+
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(message = TRUE, warning = TRUE, fig.width = 10, fig.height = 4)
-library(qcurs)
-library(xts)
+
+knitr::opts_chunk$set(message = TRUE, 
+                      warning = TRUE, 
+                      fig.width = 10, 
+                      fig.height = 4)
 ```
 
-# Settings
+```{r load all packages you might need }
+
+load_packages <- function(cran = character(), github = character()) {
+  # CRAN packages that are missing
+  miss <- cran[!cran %in% rownames(installed.packages())]
+  if (length(miss)) install.packages(miss, repos = "https://cloud.r-project.org")
+  # GitHub packages as "owner/repo", installed through remotes
+  for (g in github) {
+    if (!basename(g) %in% rownames(installed.packages())) {
+      if (!requireNamespace("remotes", quietly = TRUE))
+        install.packages("remotes", repos = "https://cloud.r-project.org")
+      remotes::install_github(g)
+    }
+  }
+  invisible(lapply(c(cran, basename(github)), library, character.only = TRUE))
+}
+
+load_packages(cran   = c("xts", "zoo", "geosphere"),
+              github = "Urban-Climate-Unibe/qcurs")
+```
+
+## Prepare for QC run
 
 ```{r settings}
 # ---- files -------------------------------------------------------------
