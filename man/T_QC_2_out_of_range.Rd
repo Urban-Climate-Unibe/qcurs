@@ -9,7 +9,6 @@ T_QC_2_out_of_range(
   season_thresholds = list(winter = list(min_val = -24.44, max_val = 23.54), spring =
     list(min_val = -21.05, max_val = 38.08), summer = list(min_val = -5.85, max_val =
     46.26), autumn = list(min_val = -8.42, max_val = 40.87)),
-  summer_min = NULL,
   verbose = TRUE
 )
 }
@@ -18,10 +17,9 @@ T_QC_2_out_of_range(
 
 \item{season_thresholds}{Named list winter/spring/summer/autumn, each
 list(min_val, max_val), in deg C. Values BELOW min_val or ABOVE max_val
-are flagged.}
-
-\item{summer_min}{Convenience override for the most problematic bound;
-overwrites `season_thresholds$summer$min_val` when not NULL.}
+are flagged. The defaults are the Bern bounds of the published pipeline
+with the summer minimum corrected to -5.85 (published as 7.85, a sign
+error that would flag every cool summer night).}
 
 \item{verbose}{Report the per-season tally.}
 }
@@ -35,7 +33,12 @@ against the bound of the season that time step falls into.
 \examples{
 \dontrun{
 res <- T_QC_2_out_of_range(res)
-res <- T_QC_2_out_of_range(res, summer_min = -10)   # colder site
+# a colder site: hand in the whole list with the bound changed
+b <- list(winter = list(min_val = -30, max_val = 20),
+          spring = list(min_val = -25, max_val = 35),
+          summer = list(min_val = -10, max_val = 42),
+          autumn = list(min_val = -15, max_val = 38))
+res <- T_QC_2_out_of_range(res, season_thresholds = b)
 }
 
 }

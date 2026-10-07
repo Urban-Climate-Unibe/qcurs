@@ -6,9 +6,9 @@
 #' @param input xts of temperature, or list(qc_data, qc_data_flagged).
 #' @param season_thresholds Named list winter/spring/summer/autumn, each
 #'   list(min_val, max_val), in deg C. Values BELOW min_val or ABOVE max_val
-#'   are flagged.
-#' @param summer_min Convenience override for the most problematic bound;
-#'   overwrites `season_thresholds$summer$min_val` when not NULL.
+#'   are flagged. The defaults are the Bern bounds of the published pipeline
+#'   with the summer minimum corrected to -5.85 (published as 7.85, a sign
+#'   error that would flag every cool summer night).
 #' @param verbose Report the per-season tally.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
@@ -16,7 +16,12 @@
 #' @examples
 #' \dontrun{
 #' res <- T_QC_2_out_of_range(res)
-#' res <- T_QC_2_out_of_range(res, summer_min = -10)   # colder site
+#' # a colder site: hand in the whole list with the bound changed
+#' b <- list(winter = list(min_val = -30, max_val = 20),
+#'           spring = list(min_val = -25, max_val = 35),
+#'           summer = list(min_val = -10, max_val = 42),
+#'           autumn = list(min_val = -15, max_val = 38))
+#' res <- T_QC_2_out_of_range(res, season_thresholds = b)
 #' }
 #'
 #' @import xts
@@ -28,13 +33,12 @@ T_QC_2_out_of_range <- function(input,
                                   spring = list(min_val = -21.05, max_val = 38.08),
                                   summer = list(min_val =  -5.85, max_val = 46.26),
                                   autumn = list(min_val =  -8.42, max_val = 40.87)),
-                                summer_min = NULL,
                                 verbose = TRUE) {
 
 #-------------------------------------------------------------------------------
 # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature")
+  input <- qc_prepare_input(input, what = "temperature", level = "t2_out_of_range")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -45,12 +49,6 @@ T_QC_2_out_of_range <- function(input,
   # ... all four seasons must be present
   if (!all(seasons %in% names(season_thresholds)))
     stop("season_thresholds must contain winter, spring, summer and autumn.")
-  # ... the convenience override wins over the list entry
-  if (!is.null(summer_min)) {
-    if (!is.numeric(summer_min) || length(summer_min) != 1)
-      stop("summer_min must be a single number.")
-    season_thresholds$summer$min_val <- summer_min
-  }
   for (s in seasons) {
     b <- season_thresholds[[s]]
     if (!all(c("min_val", "max_val") %in% names(b)))
@@ -93,6 +91,8 @@ T_QC_2_out_of_range <- function(input,
   n_total <- sum(mask)
   # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
+  # per-station coverage: every cell that held a value was judged
+  n_judged <- stats::setNames(colSums(!is.na(X)), colnames(X))
   # per-season tally: row(mask)[mask] gives the time index of every flagged cell
   n_season <- c(winter = 0L, spring = 0L, summer = 0L, autumn = 0L)
 
@@ -123,6 +123,7 @@ T_QC_2_out_of_range <- function(input,
   input$qc_data_flagged        <- flg
   input$qc_info$t2_out_of_range <- list(n_flagged            = n_total,
                                         n_flagged_by_station = n_station,
+                                        n_judged_by_station  = n_judged,
                                         n_flagged_by_season  = n_season,
                                         season_thresholds    = season_thresholds)
   input

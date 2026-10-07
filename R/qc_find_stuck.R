@@ -9,7 +9,7 @@
 #' median is at or above it is not judged, because in fog and continuous rain
 #' the humidity genuinely stops moving. Temperature passes NULL.
 #'
-#' Used by `T_QC_4_stuck_values()` and `RH_QC_5_stuck_values()`, so the
+#' Used by `T_QC_4_stuck_values()` and `RH_QC_4_stuck_values()`, so the
 #' search exists once and a correction reaches both levels.
 #'
 #' @param v Numeric vector of one station, NA for gaps.
@@ -19,28 +19,34 @@
 #' @param exempt_above Windows with a median at or above this are skipped;
 #'   NULL for no exemption.
 #'
-#' @return Logical vector of the same length as `v`: TRUE at every stuck point.
+#' @return list(hit = logical, TRUE at every stuck point; judged = logical,
+#'   TRUE at every point covered by at least one judged window). Both as long
+#'   as `v`, both FALSE at gaps.
 #'
 #' @keywords internal
 #' @noRd
 qc_find_stuck <- function(v, width, sd_tol, min_valid, exempt_above = NULL) {
-  hit <- rep(FALSE, length(v))
-  # a station with fewer values than one window can never be judged
-  if (sum(!is.na(v)) < width) return(hit)
+  n <- length(v)
+  hit    <- rep(FALSE, n)
+  judged <- rep(FALSE, n)
+  # a series shorter than one window, or without enough values to fill one, is never judged
+  if (n < width || sum(!is.na(v)) < min_valid) return(list(hit = hit, judged = judged))
   # rolling variation and valid count of the window ENDING at each point
   sdv <- zoo::rollapply(v, width, function(z) stats::sd(z, na.rm = TRUE), align = "right", fill = NA)
   cnt <- zoo::rollapply(v, width, function(z) sum(!is.na(z)),           align = "right", fill = NA)
-  # windows with no variation and enough valid values
-  stuck <- !is.na(sdv) & sdv <= sd_tol & cnt >= min_valid
-  # the saturation exception: a constant window at the top is not a fault
+  # windows with enough valid values get a verdict
+  ok <- !is.na(cnt) & cnt >= min_valid
+  # the saturation exception: a constant window at the top is not judged
   if (!is.null(exempt_above)) {
     med <- zoo::rollapply(v, width, function(z) stats::median(z, na.rm = TRUE), align = "right", fill = NA)
-    stuck <- stuck & (is.na(med) | med < exempt_above)
+    ok <- ok & !is.na(med) & med < exempt_above
   }
-  ends <- which(stuck)
-  if (!length(ends)) return(hit)
-  # expand each window end back over its width, BY POSITION
-  pos <- unique(unlist(lapply(ends, function(i) max(1, i - width + 1):i)))
-  hit[pos] <- TRUE
-  hit
+  # the stuck windows among the judged ones
+  stuck <- ok & !is.na(sdv) & sdv <= sd_tol
+  # expand each window end back over its width, BY POSITION; gaps inside a
+  # window are not points and stay FALSE
+  expand <- function(ends) unique(unlist(lapply(ends, function(i) max(1, i - width + 1):i)))
+  judged[expand(which(ok))] <- TRUE
+  hit[expand(which(stuck))] <- TRUE
+  list(hit = hit & !is.na(v), judged = judged & !is.na(v))
 }

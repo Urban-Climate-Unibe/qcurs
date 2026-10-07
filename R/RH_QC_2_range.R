@@ -3,8 +3,9 @@
 #' Objects to values outside `[rh_min, rh_max]`. Readings a few percent above
 #' 100 are common in condensation because of calibration tolerance and are
 #' physically meaningful, so the default ceiling is 105 rather than 100. They
-#' are kept as measured: QC flags, it never alters data. Whoever wants a hard
-#' cap at 100 for display or publication does that in the analysis script.
+#' are kept as measured and unflagged - this level never clamps. Whoever wants
+#' a hard cap at 100 for display or publication does that in the analysis
+#' script.
 #'
 #' @param input xts of relative humidity, or list from a previous QC level.
 #' @param rh_min Lower physical bound in percent.
@@ -29,7 +30,7 @@ RH_QC_2_range <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "humidity")
+  input <- qc_prepare_input(input, what = "humidity", level = "rh2_range")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -60,6 +61,8 @@ RH_QC_2_range <- function(input,
   n_total <- sum(mask)
   # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
+  # per-station coverage: every cell that held a value was judged
+  n_judged <- stats::setNames(colSums(!is.na(X)), colnames(X))
 
   # apply only if something was found
   if (n_total > 0) {
@@ -84,6 +87,7 @@ RH_QC_2_range <- function(input,
   input$qc_data_flagged   <- flg
   input$qc_info$rh2_range <- list(n_flagged            = n_total,
                                   n_flagged_by_station = n_station,
+                                  n_judged_by_station  = n_judged,
                                   rh_min               = rh_min,
                                   rh_max               = rh_max)
   input

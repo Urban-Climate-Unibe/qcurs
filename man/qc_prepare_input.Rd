@@ -4,7 +4,7 @@
 \alias{qc_prepare_input}
 \title{Standard input preamble for every QC level}
 \usage{
-qc_prepare_input(input, what = "temperature")
+qc_prepare_input(input, what = "temperature", level = NULL)
 }
 \arguments{
 \item{input}{Either an `xts` object (stations in columns, one column per
@@ -14,6 +14,11 @@ sensor, named after the station ID) at the start of the chain, or the
 \item{what}{Which chain this is: `"temperature"` or `"humidity"`. Not
 cosmetic - it names the records `dataset_<what>` and `conversion_<what>`,
 and the window based levels read their time step from there.}
+
+\item{level}{The calling level's `qc_info` key (e.g. `"t3_time_consistency"`).
+If that record already exists, the level ran before on this chain: a
+warning says so, because the earlier report is about to be replaced
+(the earlier flags stay - a flagged cell is never flagged twice).}
 }
 \value{
 The input as a validated chain list with three elements:
@@ -39,7 +44,7 @@ by this convention and is not a parameter.
 \examples{
 \dontrun{
 # at the start of every level:
-input <- qc_prepare_input(input, what = "temperature")
+input <- qc_prepare_input(input, what = "temperature", level = "t3_time_consistency")
 x   <- input$qc_data
 flg <- input$qc_data_flagged
 

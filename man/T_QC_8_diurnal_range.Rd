@@ -9,14 +9,15 @@ T_QC_8_diurnal_range(
   range_frac = 0.4,
   min_consecutive_days = 2,
   min_obs_per_day = 72,
-  min_reference_days = 14,
+  min_stations = 3,
   verbose = TRUE
 )
 }
 \arguments{
 \item{input}{xts of temperature, or list from a previous QC level.}
 
-\item{range_frac}{Threshold as a fraction of the station median range.}
+\item{range_frac}{Threshold as a fraction of the network median range of
+the same day.}
 
 \item{min_consecutive_days}{Days in a row below the threshold before any of
 them is objected to.}
@@ -24,7 +25,9 @@ them is objected to.}
 \item{min_obs_per_day}{Valid values a day needs to have its range judged
 (72 = half of a 10-minute day).}
 
-\item{min_reference_days}{Valid days a station needs for a robust median.}
+\item{min_stations}{Stations with a range a day needs before it can serve
+as the yardstick; with fewer stations than that in the data the level
+skips itself and says why.}
 
 \item{verbose}{Report the tally.}
 }
@@ -39,8 +42,11 @@ landuse-compatible neighbours it is also spatially unchecked.
 }
 \details{
 This level removes days whose diurnal range falls below a fraction of the
-station's OWN median range, for a minimum number of CONSECUTIVE days. It
-needs no neighbours and therefore also covers isolated stations
+NETWORK's range on the SAME day, for a minimum number of CONSECUTIVE days.
+The yardstick is the median daily range over all stations with a range
+that day: a fog week collapses every station together and stays invisible,
+an indoor sensor collapses alone and shows. It needs no metadata, only
+enough stations reporting on the same day.
 }
 \examples{
 \dontrun{

@@ -30,7 +30,7 @@ RH_QC_3_spike <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
   
-  input <- qc_prepare_input(input, what = "humidity")
+  input <- qc_prepare_input(input, what = "humidity", level = "rh3_spike")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
   
@@ -55,16 +55,19 @@ RH_QC_3_spike <- function(input,
   n_total <- 0
   # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
-  
+  # per-station coverage: how many cells the test was applied to
+  n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
+
   # iterate over all stations (columns)
   for (s in colnames(X)) {
     # extract data vector of this station
     v <- X[, s]
     # the spike search itself lives in qc_find_spikes(), shared with T_QC_3
-    hit <- qc_find_spikes(v, dt, threshold)
-    
+    sp <- qc_find_spikes(v, dt, threshold)
+    n_judged[s] <- sum(sp$judged)
+
     # combine the verdict with THIS station's column only
-    mask <- hit & !is.na(v) & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
+    mask <- sp$hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
     # how many cells this level objects to at this station
     n_found <- sum(mask)
     
@@ -99,6 +102,7 @@ RH_QC_3_spike <- function(input,
   input$qc_data_flagged   <- flg
   input$qc_info$rh3_spike <- list(n_flagged            = n_total,
                                   n_flagged_by_station = n_station,
+                                  n_judged_by_station  = n_judged,
                                   dt                   = dt,
                                   threshold            = threshold)
   input

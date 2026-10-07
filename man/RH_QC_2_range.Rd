@@ -22,8 +22,9 @@ The chain list with qc_data, qc_data_flagged and qc_info.
 Objects to values outside `[rh_min, rh_max]`. Readings a few percent above
 100 are common in condensation because of calibration tolerance and are
 physically meaningful, so the default ceiling is 105 rather than 100. They
-are kept as measured: QC flags, it never alters data. Whoever wants a hard
-cap at 100 for display or publication does that in the analysis script.
+are kept as measured and unflagged - this level never clamps. Whoever wants
+a hard cap at 100 for display or publication does that in the analysis
+script.
 }
 \examples{
 \dontrun{
