@@ -22,8 +22,7 @@
 #'   else 0) or "strict" (same class only).
 #'
 #' @return list(ids = stations used, in W's order; W = weight matrix;
-#'   sigma_d = Gaussian bandwidth in metres). Empty ids, an empty W and
-#'   sigma_d = NA when no station has a metadata row.
+#'   sigma_d = Gaussian bandwidth in metres).
 #'
 #' @keywords internal
 #' @noRd
@@ -36,6 +35,10 @@ qc_neighbour_weights <- function(metadata, stations, radius_m, k_neighbours,
   need <- c("ID", "LAT", "LON", "Landuse")
   if (!all(need %in% names(md)))
     stop(sprintf("Metadata must contain the columns %s.", paste(need, collapse = ", ")))
+  # coordinates must be numeric and present: a character column dies deep inside
+  # geosphere, and an NA would silently zero the station's weights
+  if (!is.numeric(md$LAT) || !is.numeric(md$LON) || anyNA(md$LAT) || anyNA(md$LON))
+    stop("Metadata LAT/LON must be numeric and complete.")
   # duplicated IDs would make the match ambiguous
   if (anyDuplicated(md$ID)) stop("Metadata contains duplicated IDs.")
   # only stations present in BOTH the data and the metadata can be used
@@ -45,9 +48,6 @@ qc_neighbour_weights <- function(metadata, stations, radius_m, k_neighbours,
   if (length(missing_md) > 0)
     warning(sprintf("No metadata for: %s - these stations cannot be evaluated by this level.",
                     paste(missing_md, collapse = ", ")))
-  # nothing matches at all: an empty network, the caller decides what that means
-  if (!length(ids))
-    return(list(ids = character(0), W = matrix(0, 0, 0), sigma_d = NA_real_))
   # align the metadata rows to the order of the used stations
   md <- md[match(ids, md$ID), ]
   # a missing landuse would silently produce zero weights; make it visible once
@@ -59,8 +59,12 @@ qc_neighbour_weights <- function(metadata, stations, radius_m, k_neighbours,
   }
   ns <- length(ids)
 
-  # pairwise distance matrix in metres, NA diagonal (validates the coordinates)
-  D <- qc_distance_matrix(md)
+  # pairwise distance matrix in metres
+  D <- matrix(0, ns, ns, dimnames = list(ids, ids))
+  for (i in seq_len(ns)) for (j in seq_len(ns))
+    D[i, j] <- geosphere::distHaversine(c(md$LON[i], md$LAT[i]), c(md$LON[j], md$LAT[j]))
+  # a station is not its own neighbour
+  diag(D) <- NA
   # Gaussian bandwidth: median pairwise distance of the DATA-BEARING network
   sigma_d <- stats::median(D, na.rm = TRUE)
   # equation (2), distance part; the diagonal becomes weight 0

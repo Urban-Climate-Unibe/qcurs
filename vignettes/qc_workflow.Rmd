@@ -1,6 +1,6 @@
 ---
 title: "QC workflow - temperature and humidity"
-author: "Patrick Kallabis"
+author: ""
 date: "`r format(Sys.Date(), '%d.%m.%Y')`"
 output:
   html_document:
@@ -8,44 +8,24 @@ output:
     toc_depth: 2
 ---
 
-This is a template. Fill in the SETTINGS block, then knit or run chunk by chunk. Every level is its own chunk with its parameters written out, so what ran is what you see. The defaults are the package defaults; the ones you will most likely touch are marked `# <-`.
+This is a template. Fill in the SETTINGS block, then knit or run chunk by
+chunk. Every level is its own chunk with its parameters written out, so what
+ran is what you see. The defaults are the package defaults; the ones you
+will most likely touch are marked `# <-`.
 
-Out of the box it runs on the Biel summer 2025 campaign that ships with the package (temperature only). That file is the clean raw campaign, so expect no flags - the version with planted errors is `Biel_test_tidy.csv` in tidy layout, see `tests/testthat/helper-testdata.R` for the pivot. Point the paths at your own files; the humidity part runs as soon as `rh_file` is set.
-
-# Settings
-
-## Load Packages
+Out of the box it runs on the Biel summer 2025 campaign that ships with the
+package (temperature only). That file is the clean raw campaign, so expect
+no flags - the version with planted errors is `Biel_test_tidy.csv` in tidy
+layout, see `tests/testthat/helper-testdata.R` for the pivot. Point the
+paths at your own files; the humidity part runs as soon as `rh_file` is set.
 
 ```{r setup, include = FALSE}
-
-knitr::opts_chunk$set(message = TRUE, 
-                      warning = TRUE, 
-                      fig.width = 10, 
-                      fig.height = 4)
+knitr::opts_chunk$set(message = TRUE, warning = TRUE, fig.width = 10, fig.height = 4)
+library(qcurs)
+library(xts)
 ```
 
-```{r load all packages you might need }
-
-load_packages <- function(cran = character(), github = character()) {
-  # CRAN packages that are missing
-  miss <- cran[!cran %in% rownames(installed.packages())]
-  if (length(miss)) install.packages(miss, repos = "https://cloud.r-project.org")
-  # GitHub packages as "owner/repo", installed through remotes
-  for (g in github) {
-    if (!basename(g) %in% rownames(installed.packages())) {
-      if (!requireNamespace("remotes", quietly = TRUE))
-        install.packages("remotes", repos = "https://cloud.r-project.org")
-      remotes::install_github(g)
-    }
-  }
-  invisible(lapply(c(cran, basename(github)), library, character.only = TRUE))
-}
-
-load_packages(cran   = c("xts", "zoo", "geosphere"),
-              github = "Urban-Climate-Unibe/qcurs")
-```
-
-## Prepare for QC run
+# Settings
 
 ```{r settings}
 # ---- files -------------------------------------------------------------
@@ -80,7 +60,9 @@ dir.create(out_dir, showWarnings = FALSE)
 
 ## 1. Read and check
 
-The package does not read files. Read them here, look at them, and stop if the shape is wrong - a misread CSV is silent and everything downstream is wrong with it.
+The package does not read files. Read them here, look at them, and stop if
+the shape is wrong - a misread CSV is silent and everything downstream is
+wrong with it.
 
 ```{r t-read}
 t_raw <- read.csv(t_file, sep = csv_sep, dec = csv_dec, check.names = FALSE,
@@ -110,7 +92,9 @@ setdiff(colnames(t_x), md$ID)
 
 ## 3. The chain, level by level
 
-Every level takes the list the previous one returned and gives it back with its flags and its record added. Change a parameter, re-run from that chunk on.
+Every level takes the list the previous one returned and gives it back with
+its flags and its record added. Change a parameter, re-run from that chunk
+on.
 
 ```{r t1}
 t_res <- T_QC_1_gross_error(t_x,
@@ -119,9 +103,13 @@ t_res <- T_QC_1_gross_error(t_x,
 ```
 
 ```{r t2}
-# seasonal bounds; summer_min is the one worth checking for cold rural sites
+# seasonal bounds in deg C; the summer minimum is the one worth checking for cold rural sites
 t_res <- T_QC_2_out_of_range(t_res,
-                             summer_min = -5.85)                                      # <-
+                             season_thresholds = list(
+                               winter = list(min_val = -24.44, max_val = 23.54),
+                               spring = list(min_val = -21.05, max_val = 38.08),
+                               summer = list(min_val =  -5.85, max_val = 46.26),      # <-
+                               autumn = list(min_val =  -8.42, max_val = 40.87)))
 ```
 
 ```{r t3}
@@ -167,11 +155,12 @@ t_res <- T_QC_7_spatiotemporal_consistency(t_res, metadata = md,
 ```
 
 ```{r t8}
+# relative to the network's range on the same day: fog collapses everyone, an indoor sensor collapses alone
 t_res <- T_QC_8_diurnal_range(t_res,
                               range_frac = 0.4,
                               min_consecutive_days = 2,
                               min_obs_per_day = 72,
-                              min_reference_days = 14)
+                              min_stations = 3)
 ```
 
 ```{r t9, eval = interpolate}
@@ -220,7 +209,7 @@ Where a level was blind, by name:
 t_res$qc_info$t5_climatic_outliers$refused
 t_res$qc_info$t6_spatial_consistency$never_evaluated
 t_res$qc_info$t7_spatiotemporal_consistency$skipped
-t_res$qc_info$t8_diurnal_range$skipped_stations
+t_res$qc_info$t8_diurnal_range$days_unjudged
 ```
 
 One station, raw against cleaned, flagged points coloured by level:
@@ -243,7 +232,8 @@ if (length(codes[codes < 50]))
 
 ## 5. Export
 
-Cleaned series, flags and the record, side by side. The flag file is the audit trail; keep it with the data.
+Cleaned series, flags and the record, side by side. The flag file is the
+audit trail; keep it with the data.
 
 ```{r t-export}
 as_table <- function(x) data.frame(time = format(index(x), "%Y-%m-%d %H:%M:%S"), coredata(x),
@@ -259,7 +249,9 @@ list.files(out_dir)
 
 # Humidity
 
-Same logger IDs, same time stamps as the temperature. Cells without a temperature twin at exactly the same stamp are not judged by levels 1, 5 and 7.
+Same logger IDs, same time stamps as the temperature. Cells without a
+temperature twin at exactly the same stamp are not judged by levels 1, 5
+and 7.
 
 ```{r rh-read, eval = run_humidity}
 rh_raw <- read.csv(rh_file, sep = csv_sep, dec = csv_dec, check.names = FALSE,
@@ -352,7 +344,7 @@ saveRDS(rh_res, file.path(out_dir, "humidity_result.rds"))
 # Flag codes
 
 | code | temperature | humidity |
-|----|----|----|
+|---|---|---|
 | `NA` | no observation | no observation |
 | `0` | not objected by any level that reached the cell | same |
 | `1` | gross error | inherited from temperature |
@@ -362,7 +354,7 @@ saveRDS(rh_res, file.path(out_dir, "humidity_result.rds"))
 | `5` | climatic outlier | decoupled from own T |
 | `6` | spatial consensus | saturation drift |
 | `7` | spatiotemporal | dewpoint consensus |
-| `8` | diurnal range collapse | \- |
+| `8` | diurnal range collapse | - |
 | `50` | plain gap filled | same |
 | `50+N` | removed by N, refilled | same |
 

@@ -38,7 +38,7 @@ RH_QC_8_interpolate <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "humidity", level = "rh8_interpolate")
+  input <- qc_prepare_input(input, what = "humidity")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 

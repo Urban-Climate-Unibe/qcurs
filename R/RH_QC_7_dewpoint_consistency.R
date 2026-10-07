@@ -54,7 +54,7 @@ RH_QC_7_dewpoint_consistency <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "humidity", level = "rh7_dewpoint_consistency")
+  input <- qc_prepare_input(input, what = "humidity")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
   landuse_mode <- match.arg(landuse_mode)
@@ -132,9 +132,6 @@ RH_QC_7_dewpoint_consistency <- function(input,
   n_total <- sum(mask)
   # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
-  # per-station coverage: cells the consensus test was applied to (0 outside the network)
-  n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
-  n_judged[net$ids] <- colSums(res$judged)
 
   # apply only if something was found
   if (n_total > 0) {
@@ -151,7 +148,7 @@ RH_QC_7_dewpoint_consistency <- function(input,
   # report and hand the pair on to the next level
 
   # the blind spots: stations the test never reached, including those outside the network
-  never_evaluated <- names(n_judged)[n_judged == 0]
+  never_evaluated <- setdiff(colnames(X), net$ids[res$evaluated])
   if (isTRUE(verbose)) {
     message(sprintf("RH7 dewpoint consistency (max(%g*sigma, %g K), k=%d after landuse): %d flagged, %d of %d loggers and %d of %d time steps with temperature",
                     k_sigma, abs_floor, k_neighbours, n_total,
@@ -166,7 +163,6 @@ RH_QC_7_dewpoint_consistency <- function(input,
   input$qc_data_flagged                  <- flg
   input$qc_info$rh7_dewpoint_consistency <- list(n_flagged            = n_total,
                                                  n_flagged_by_station = n_station,
-                                                 n_judged_by_station  = n_judged,
                                                  sigma_d              = net$sigma_d,
                                                  k_sigma              = k_sigma,
                                                  abs_floor            = abs_floor,

@@ -9,11 +9,8 @@
 #' temperature and the dewpoint level.
 #'
 #' Stations that never reach the minimum number of compatible valid
-#' neighbours are listed in `qc_info$t6_spatial_consistency$never_evaluated`,
-#' and `n_judged_by_station` counts the cells the test actually reached.
+#' neighbours are listed in `qc_info$t6_spatial_consistency$never_evaluated`.
 #' A station this test cannot see is a coverage statement, not a clean bill.
-#' With fewer than `min_neighbours + 1` stations in data AND metadata the
-#' level skips itself, records why, and hands the pair back unchanged.
 #'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param metadata Data frame with columns ID, LAT, LON, Landuse. Stations are
@@ -50,7 +47,7 @@ T_QC_6_spatial_consistency <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature", level = "t6_spatial_consistency")
+  input <- qc_prepare_input(input, what = "temperature")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
   landuse_mode <- match.arg(landuse_mode)
@@ -71,16 +68,10 @@ T_QC_6_spatial_consistency <- function(input,
   # the network geometry, once (metadata validation lives in the helper)
 
   net <- qc_neighbour_weights(metadata, colnames(x), radius_m, k_neighbours, landuse_mode)
-  # without at least min_neighbours + 1 stations the condition can never be
-  # met: not an error but a skip - say why, record it, hand the pair back
-  if (length(net$ids) < min_neighbours + 1) {
-    reason <- sprintf("only %d station(s) match data and metadata; need at least %d",
-                      length(net$ids), min_neighbours + 1)
-    if (isTRUE(verbose))
-      message("T6 spatial consistency: ", reason, " - level skipped, continuing with the next level.")
-    input$qc_info$t6_spatial_consistency <- list(n_flagged = 0L, skipped = TRUE, reason = reason)
-    return(input)
-  }
+  # without at least min_neighbours + 1 stations the condition can never be met
+  if (length(net$ids) < min_neighbours + 1)
+    stop(sprintf("Only %d station(s) match data and metadata; need at least %d.",
+                 length(net$ids), min_neighbours + 1))
 
   #-------------------------------------------------------------------------------
   # Perform QC Level 6
@@ -101,9 +92,6 @@ T_QC_6_spatial_consistency <- function(input,
   n_total <- sum(mask)
   # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
-  # per-station coverage: cells the consensus test was applied to (0 outside the network)
-  n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
-  n_judged[net$ids] <- colSums(res$judged)
 
   # apply only if something was found
   if (n_total > 0) {
@@ -120,7 +108,7 @@ T_QC_6_spatial_consistency <- function(input,
   # report and hand the pair on to the next level
 
   # the blind spots: stations the test never reached, including those outside the network
-  never_evaluated <- names(n_judged)[n_judged == 0]
+  never_evaluated <- setdiff(colnames(X), net$ids[res$evaluated])
   if (isTRUE(verbose)) {
     message(sprintf("T6 spatial consistency (max(%g*sigma, %g K), k=%d after landuse): %d flagged",
                     k_sigma, abs_floor, k_neighbours, n_total))
@@ -134,7 +122,6 @@ T_QC_6_spatial_consistency <- function(input,
   input$qc_data_flagged                <- flg
   input$qc_info$t6_spatial_consistency <- list(n_flagged            = n_total,
                                                n_flagged_by_station = n_station,
-                                               n_judged_by_station  = n_judged,
                                                sigma_d              = net$sigma_d,
                                                k_sigma              = k_sigma,
                                                abs_floor            = abs_floor,

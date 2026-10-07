@@ -38,7 +38,7 @@ RH_QC_1_inherit_temperature <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "humidity", level = "rh1_inherit_temperature")
+  input <- qc_prepare_input(input, what = "humidity")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -101,12 +101,6 @@ RH_QC_1_inherit_temperature <- function(input,
   n_total <- sum(mask)
   # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
-  # per-station coverage: humidity values that had a temperature flag to look at
-  n_judged <- stats::setNames(colSums(!is.na(M) & !is.na(X)), colnames(X))
-  # which temperature codes were inherited how often: the humidity flag is
-  # always 1, so this is the only place the source level stays visible
-  tab <- table(M[mask])
-  n_by_t_code <- stats::setNames(as.integer(tab), names(tab))
 
   # apply only if something was found
   if (n_total > 0) {
@@ -143,8 +137,6 @@ RH_QC_1_inherit_temperature <- function(input,
   input$qc_data_flagged                 <- flg
   input$qc_info$rh1_inherit_temperature <- list(n_flagged            = n_total,
                                                 n_flagged_by_station = n_station,
-                                                n_judged_by_station  = n_judged,
-                                                n_flagged_by_t_code  = n_by_t_code,
                                                 inherited            = TRUE,
                                                 inherit_gapfill      = inherit_gapfill,
                                                 loggers_matched      = loggers,

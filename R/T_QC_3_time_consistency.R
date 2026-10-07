@@ -27,7 +27,7 @@ T_QC_3_time_consistency <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature", level = "t3_time_consistency")
+  input <- qc_prepare_input(input, what = "temperature")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -52,19 +52,16 @@ T_QC_3_time_consistency <- function(input,
   n_total <- 0
   # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
-  # per-station coverage: how many cells the test was applied to
-  n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
 
   # iterate over all stations (columns)
   for (s in colnames(X)) {
     # extract data vector of this station
     v <- X[, s]
     # the spike search itself lives in qc_find_spikes(), shared with RH_QC_3
-    sp <- qc_find_spikes(v, dt, threshold)
-    n_judged[s] <- sum(sp$judged)
+    hit <- qc_find_spikes(v, dt, threshold)
 
-    # combine the verdict with THIS station's column only
-    mask <- sp$hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
+    # creatte a mask based on the conditions
+    mask <- hit & !is.na(v) & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
     # how many cells this level objects to at this station.
     n_found <- sum(mask)
 
@@ -99,8 +96,7 @@ T_QC_3_time_consistency <- function(input,
   input$qc_data_flagged             <- flg
   input$qc_info$t3_time_consistency <- list(n_flagged            = n_total,
                                             n_flagged_by_station = n_station,
-                                            n_judged_by_station  = n_judged,
                                             dt                   = dt,
-                                            threshold            = threshold)
+                                            threshold                 = threshold)
   input
 }

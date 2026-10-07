@@ -38,7 +38,7 @@ T_QC_9_interpolate <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature", level = "t9_interpolate")
+  input <- qc_prepare_input(input, what = "temperature")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 

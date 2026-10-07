@@ -14,34 +14,35 @@
 #' @param dt Half window in time steps.
 #' @param threshold Minimum deviation, in the unit of `v`.
 #'
-#' @return list(hit = logical, TRUE at every spike; judged = logical, TRUE at
-#'   every point the test could actually be applied to). Both as long as `v`.
+#' @return Logical vector of the same length as `v`: TRUE at every spike.
 #'
 #' @keywords internal
 #' @noRd
 qc_find_spikes <- function(v, dt, threshold) {
   n <- length(v)
-  hit    <- rep(FALSE, n)
-  judged <- rep(FALSE, n)
+  # every point innocent until proven guilty
+  hit <- rep(FALSE, n)
+  # walk every time step
   for (i in seq_len(n)) {
     # a gap cannot be judged; the first and last point have no two-sided context
     if (is.na(v[i]) || i == 1 || i == n) next
     # the window around i, clamped to the edges of the series
     nb <- max(1, i - dt):min(n, i + dt)
-    # too little context: refuse instead of guessing
+    # too little context to judge: refuse instead of guessing
     if (sum(!is.na(v[nb])) < (1 + dt)) next
-    # the valid values before and after i
+    # condition 1: off the window median (the window includes v[i] itself,
+    # which a single outlier among 2*dt + 1 values does not move)
+    if (abs(v[i] - stats::median(v[nb], na.rm = TRUE)) < threshold) next
+    # the values BEFORE i, gaps removed
     bef <- v[max(1, i - dt):(i - 1)]; bef <- bef[!is.na(bef)]
+    # condition 2: off the past
+    if (!length(bef) || abs(v[i] - stats::median(bef)) < threshold) next
+    # the values AFTER i, gaps removed
     aft <- v[(i + 1):min(n, i + dt)]; aft <- aft[!is.na(aft)]
-    # one side empty: no two-sided verdict possible
-    if (!length(bef) || !length(aft)) next
-    # from here on the test is applied, whatever it says
-    judged[i] <- TRUE
-    # off the window median (v[i] is inside the window; one outlier among
-    # 2*dt + 1 values does not move it) AND off the past AND off the future
-    hit[i] <- abs(v[i] - stats::median(v[nb], na.rm = TRUE)) >= threshold &&
-              abs(v[i] - stats::median(bef)) >= threshold &&
-              abs(v[i] - stats::median(aft)) >= threshold
+    # condition 3: off the future
+    if (!length(aft) || abs(v[i] - stats::median(aft)) < threshold) next
+    # all three conditions met: an isolated spike
+    hit[i] <- TRUE
   }
-  list(hit = hit, judged = judged)
+  hit
 }

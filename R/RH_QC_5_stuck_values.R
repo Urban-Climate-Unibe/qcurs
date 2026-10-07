@@ -40,7 +40,7 @@ RH_QC_5_stuck_values <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "humidity", level = "rh5_stuck_values")
+  input <- qc_prepare_input(input, what = "humidity")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -74,8 +74,6 @@ RH_QC_5_stuck_values <- function(input,
   n_total <- 0
   # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
-  # per-station coverage: cells inside at least one judged window
-  n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
 
   # iterate over all stations (columns)
   for (s in colnames(X)) {
@@ -83,11 +81,10 @@ RH_QC_5_stuck_values <- function(input,
     v <- X[, s]
     # the search itself lives in qc_find_stuck(), shared with T_QC_4; the
     # saturation exception is the one thing this chain adds
-    st <- qc_find_stuck(v, width, sd_tol, min_valid, exempt_above = sat_max)
-    n_judged[s] <- sum(st$judged & !is.na(v))
+    hit <- qc_find_stuck(v, width, sd_tol, min_valid, exempt_above = sat_max)
 
     # combine the verdict with THIS station's column only
-    mask <- st$hit & !is.na(v) & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
+    mask <- hit & !is.na(v) & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
     # how many cells this level objects to at this station
     n_found <- sum(mask)
 
@@ -123,7 +120,6 @@ RH_QC_5_stuck_values <- function(input,
   input$qc_data_flagged          <- flg
   input$qc_info$rh5_stuck_values <- list(n_flagged            = n_total,
                                          n_flagged_by_station = n_station,
-                                         n_judged_by_station  = n_judged,
                                          window_size          = window_size,
                                          width_points         = width,
                                          min_valid            = min_valid,

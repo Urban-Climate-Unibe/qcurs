@@ -14,10 +14,28 @@ result RECORDS and how the edges behave.
   temperature levels were inherited how often (the humidity flag is always 1).
 * A level that runs a second time on the same chain warns; its earlier flags
   stay, its report is replaced (`qc_prepare_input(level = ...)`).
-* `T_QC_8_diurnal_range()` lists `skipped_stations` (no baseline).
+* `T_QC_8_diurnal_range()` lists `days_unjudged` (no network yardstick).
 * `T_QC_7_spatiotemporal_consistency()` warns about stations without a
   metadata row and lists them in `skipped` as `<id>(no metadata)`; they were
   silently dropped before.
+
+## Method
+
+* `T_QC_8_diurnal_range()` judges the diurnal range against the NETWORK's
+  median range of the same day instead of the station's own median: a fog
+  week collapses every station together and stays invisible, an indoor sensor
+  collapses alone and shows. `min_reference_days` is gone, `min_stations`
+  (default 3) is new; with fewer stations the level skips itself.
+* `qc_find_spatial_outliers()` (levels T6 and RH7) takes its objections one
+  at a time per time step: remove the worst offender, rebuild consensus and
+  spread, test again. A bad neighbour can no longer drag a good station out
+  with it or hide behind the spread it inflates.
+* `T_QC_7_spatiotemporal_consistency()` judges every station against the
+  matrix as it entered the level; the result no longer depends on the column
+  order.
+* `T_QC_2_out_of_range()`: the `summer_min` shortcut is gone, the bounds list
+  is the parameter. Default summer minimum stays -5.85 (the published 7.85 is
+  a sign error).
 
 ## Fixes
 

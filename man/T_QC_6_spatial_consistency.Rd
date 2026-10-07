@@ -51,11 +51,8 @@ temperature and the dewpoint level.
 }
 \details{
 Stations that never reach the minimum number of compatible valid
-neighbours are listed in `qc_info$t6_spatial_consistency$never_evaluated`,
-and `n_judged_by_station` counts the cells the test actually reached.
+neighbours are listed in `qc_info$t6_spatial_consistency$never_evaluated`.
 A station this test cannot see is a coverage statement, not a clean bill.
-With fewer than `min_neighbours + 1` stations in data AND metadata the
-level skips itself, records why, and hands the pair back unchanged.
 }
 \examples{
 \dontrun{

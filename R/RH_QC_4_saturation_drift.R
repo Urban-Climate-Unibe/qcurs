@@ -45,7 +45,7 @@ RH_QC_4_saturation_drift <- function(input,
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
   
-  input <- qc_prepare_input(input, what = "humidity", level = "rh4_saturation_drift")
+  input <- qc_prepare_input(input, what = "humidity")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
   
@@ -82,41 +82,37 @@ RH_QC_4_saturation_drift <- function(input,
   # segment id of every time step (0, 1, 2, ... in window_days blocks)
   seg <- as.integer(floor(as.numeric(difftime(zoo::index(x), zoo::index(x)[1],
                                               units = "days")) / window_days))
-  # the saturated time steps of every segment, once; segments without any are dropped
-  sat_by_seg <- split(which(is_sat), seg[is_sat])
-
+  
   #-------------------------------------------------------------------------------
   # Perform RH QC Level 4
-
+  
   # count across all stations
   n_total <- 0
   # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
-  # per-station coverage: values at saturated steps of station-segments with a verdict
-  n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
-
+  
   # iterate over all stations (columns)
   for (s in colnames(X)) {
-    # extract data vector of this station
-    v <- X[, s]
-    # verdict per cell, FALSE until proven otherwise
-    hit <- rep(FALSE, length(v))
+    # extract data vector of this station and determine its length
+    v <- X[, s]; n <- length(v)
+    # create a vector with length n. All entries are FALSE
+    hit <- rep(FALSE, n)
     # judge segment by segment: a drift is a property of a period, not of the record
-    for (sat_steps in sat_by_seg) {
+    for (g in unique(seg)) {
+      # this segment's saturated time steps
+      sat_steps <- which(is_sat & seg == g)
+      # no fog in this segment: nothing to judge
+      if (!length(sat_steps)) next
       # the station's values during the saturation episodes
       vs <- v[sat_steps]
-      # the evidence cells: observed values at saturated steps
-      obs <- sat_steps[!is.na(vs)]
       # too few saturated observations: no verdict for this station-segment
-      if (length(obs) < min_hits) next
-      # a verdict is reached, whichever way
-      n_judged[s] <- n_judged[s] + length(obs)
+      if (sum(!is.na(vs)) < min_hits) next
       # the station does reach saturation at least once: not a drifter
       if (max(vs, na.rm = TRUE) >= station_max) next
       # a drifter: mark its observed values at the evidence steps
-      hit[obs] <- TRUE
+      hit[sat_steps[!is.na(vs)]] <- TRUE
     }
-
+    
     # combine the verdict with THIS station's column only
     mask <- hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
     # how many cells this level objects to at this station
@@ -153,7 +149,6 @@ RH_QC_4_saturation_drift <- function(input,
   input$qc_data_flagged              <- flg
   input$qc_info$rh4_saturation_drift <- list(n_flagged            = n_total,
                                              n_flagged_by_station = n_station,
-                                             n_judged_by_station  = n_judged,
                                              network_min          = network_min,
                                              station_max          = station_max,
                                              min_hits             = min_hits,

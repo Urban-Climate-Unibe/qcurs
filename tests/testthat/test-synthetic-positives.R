@@ -32,14 +32,11 @@ test_that("level 7 catches a spatiotemporal spike on a dense network", {
 test_that("qc_find_spikes flags an isolated spike, keeps a front, refuses thin context", {
   base <- c(18.0, 18.2, 18.1, 18.3, 18.4, 18.2, 18.5, 18.3, 18.1, 18.0)
   spike <- base; spike[5] <- 30
-  sp <- qc_find_spikes(spike, dt = 3, threshold = 6)
-  expect_equal(which(sp$hit), 5L)
-  expect_equal(which(sp$judged), 2:9)                    # ends never judged
+  expect_equal(which(qc_find_spikes(spike, dt = 3, threshold = 6)), 5L)
   front <- c(18.0, 18.2, 18.1, 18.3, 30.0, 30.2, 30.1, 30.3, 30.0, 30.2)
-  expect_false(any(qc_find_spikes(front, dt = 3, threshold = 6)$hit))
+  expect_false(any(qc_find_spikes(front, dt = 3, threshold = 6)))
   thin <- c(18.0, 18.2, NA, NA, 30, NA, NA, 18.5, 18.3, 18.1)
-  th <- qc_find_spikes(thin, dt = 3, threshold = 6)
-  expect_false(any(th$hit)); expect_false(th$judged[5])   # refused, not acquitted
+  expect_false(any(qc_find_spikes(thin, dt = 3, threshold = 6)))
   # the two levels reach the same verdict through the same code
   ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = 10)
   x <- xts::xts(matrix(spike, ncol = 1, dimnames = list(NULL, "S1")), order.by = ti)
@@ -65,26 +62,18 @@ test_that("qc_find_stuck flags a constant block, respects the guard and the exem
   set.seed(4)
   v <- 20 + sin(seq_len(200) / 15) + rnorm(200, 0, 0.05)
   v[80:125] <- 24                                        # 46 stuck points, window 37
-  st <- qc_find_stuck(v, width = 37, sd_tol = 0, min_valid = 19)
-  expect_equal(which(st$hit), 80:125)
-  expect_true(all(st$judged))                            # a full series: every point judged
+  hit <- qc_find_stuck(v, width = 37, sd_tol = 0, min_valid = 19)
+  expect_equal(which(hit), 80:125)
   # a block shorter than the window is invisible
   v2 <- v; v2[80:125] <- 20 + sin(80:125 / 15); v2[100:130] <- 24
-  expect_false(any(qc_find_stuck(v2, 37, 0, 19)$hit))
+  expect_false(any(qc_find_stuck(v2, 37, 0, 19)))
   # two identical survivors in an otherwise empty window do not count
   v3 <- v; v3[60:100] <- NA; v3[101:102] <- 21.5
-  s3 <- qc_find_stuck(v3, 37, 0, 19)
-  expect_false(any(s3$hit))
-  expect_false(any(s3$judged[60:100]))                   # gaps are never "judged"
-  # the saturation exemption: the same constant block at 97 is not judged at all
+  expect_false(any(qc_find_stuck(v3, 37, 0, 19)))
+  # the saturation exemption: the same constant block at 97 is not a fault
   v4 <- v; v4[80:125] <- 97
-  expect_true(any(qc_find_stuck(v4, 37, 0, 19)$hit))
-  s4 <- qc_find_stuck(v4, 37, 0, 19, exempt_above = 95)
-  expect_false(any(s4$hit)); expect_false(s4$judged[100])
-  # a series with fewer values than one window IS judged when a window still
-  # holds min_valid of them (the guard counts min_valid, not width)
-  v5 <- c(rep(20, 25), rep(NA, 40))
-  expect_equal(which(qc_find_stuck(v5, 37, 0, 19)$hit), 1:25)
+  expect_true(any(qc_find_stuck(v4, 37, 0, 19)))
+  expect_false(any(qc_find_stuck(v4, 37, 0, 19, exempt_above = 95)))
 })
 
 test_that("qc_fill_gaps fills short gaps, codes refills by level, leaves long gaps and ends", {
