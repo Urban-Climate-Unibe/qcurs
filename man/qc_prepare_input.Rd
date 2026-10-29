@@ -25,8 +25,9 @@ The input as a validated chain list with three elements:
   \describe{
     \item{qc_data}{the (possibly already cleaned) data as `xts`}
     \item{qc_data_flagged}{the flag matrix as `xts`, same shape as `qc_data`}
-    \item{qc_info}{the growing record; `dataset_<what>` (and on the first
-      level `conversion_<what>`) is filled here}
+    \item{qc_info}{the growing record; `dataset_<what>` (grid, time step,
+      value resolution; and on the first level `conversion_<what>`) is
+      filled here}
   }
 }
 \description{

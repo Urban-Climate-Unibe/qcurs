@@ -79,6 +79,7 @@ test_that("qc_prepare_input validates the pair and records the dataset", {
   expect_equal(p$qc_info$dataset_temperature$time_step_sec, 600)
   expect_equal(p$qc_info$dataset_temperature$stations, c("A", "B"))
   expect_equal(p$qc_info$dataset_temperature$variable, "temperature")
+  expect_equal(p$qc_info$dataset_temperature$resolution, 1)      # integers: smallest step 1
   expect_error(qc_prepare_input(data.frame(a = 1)), "data frame")
   bad <- p; bad$qc_data_flagged <- bad$qc_data_flagged[, 1]
   expect_error(qc_prepare_input(bad), "identical dimensions")
@@ -91,4 +92,17 @@ test_that("T_QC_4 refuses a window too short to ever reach min_non_na", {
   x  <- xts::xts(matrix(20, 50, 1, dimnames = list(NULL, "S")), order.by = ti)
   expect_error(T_QC_4_stuck_values(x, window_size = "30 mins"), "min_non_na")
   expect_silent(T_QC_4_stuck_values(x, window_size = "40 mins", verbose = FALSE))
+})
+
+test_that("T_QC_4 warns about a short window on a coarse resolution, not on a fine one", {
+  set.seed(3)
+  ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = 3 * 144)
+  v  <- 15 + 5 * sin(2 * pi * seq_along(ti) / 144) + rnorm(length(ti), 0, 0.3)
+  coarse <- xts::xts(matrix(round(v, 1), ncol = 1, dimnames = list(NULL, "S")), order.by = ti)
+  fine   <- xts::xts(matrix(round(v, 3), ncol = 1, dimnames = list(NULL, "S")), order.by = ti)
+  expect_equal(qc_prepare_input(coarse)$qc_info$dataset_temperature$resolution, 0.1)
+  expect_warning(T_QC_4_stuck_values(coarse, window_size = "1 hour", verbose = FALSE), "resolution of 0.1 K")
+  expect_silent(T_QC_4_stuck_values(coarse, window_size = "6 hours", verbose = FALSE))
+  expect_silent(T_QC_4_stuck_values(fine, window_size = "1 hour", verbose = FALSE))
+  expect_equal(T_QC_4_stuck_values(fine, verbose = FALSE)$qc_info$t4_stuck_values$resolution, 0.001)
 })

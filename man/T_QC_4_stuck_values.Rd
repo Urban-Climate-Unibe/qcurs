@@ -45,10 +45,13 @@ is expanded by position, never via time strings.
 The window is also the DETECTION DELAY: a stuck sensor looks fine until
 the window is full, then the whole block is flagged retroactively. The
 shortest safe window is the longest stretch over which genuine temperature
-stays constant at the sensor's resolution - about 40 minutes at 0.01 K on
-the Biel summer data, 2 hours at 0.1 K, and 10 hours at 0.5 K. The 6-hour
-default follows the paper; shorten it per campaign, and check winter data
-first, where fog and inversions produce far longer genuine plateaus.
+stays constant at the sensor's resolution, and that is a winter question:
+on six years of MeteoSwiss 10-minute data at 0.1 K a 1-hour window gave
+2000-4200 false flags (fog plateaus), 3 hours 0-150, 6 hours none. Loggers
+resolving 0.001 K (Biel) take a 1-hour window without a single false flag
+in summer. The level reads the resolution from `qc_info$dataset_temperature`
+and warns when the window is shorter than 6 hours at 0.05 K or coarser.
+The 6-hour default follows the paper.
 }
 \examples{
 \dontrun{

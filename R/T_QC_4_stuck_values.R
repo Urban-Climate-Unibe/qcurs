@@ -9,10 +9,13 @@
 #' The window is also the DETECTION DELAY: a stuck sensor looks fine until
 #' the window is full, then the whole block is flagged retroactively. The
 #' shortest safe window is the longest stretch over which genuine temperature
-#' stays constant at the sensor's resolution - about 40 minutes at 0.01 K on
-#' the Biel summer data, 2 hours at 0.1 K, and 10 hours at 0.5 K. The 6-hour
-#' default follows the paper; shorten it per campaign, and check winter data
-#' first, where fog and inversions produce far longer genuine plateaus.
+#' stays constant at the sensor's resolution, and that is a winter question:
+#' on six years of MeteoSwiss 10-minute data at 0.1 K a 1-hour window gave
+#' 2000-4200 false flags (fog plateaus), 3 hours 0-150, 6 hours none. Loggers
+#' resolving 0.001 K (Biel) take a 1-hour window without a single false flag
+#' in summer. The level reads the resolution from `qc_info$dataset_temperature`
+#' and warns when the window is shorter than 6 hours at 0.05 K or coarser.
+#' The 6-hour default follows the paper.
 #'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param window_size Window length, either a `difftime` (e.g.
@@ -66,7 +69,13 @@ T_QC_4_stuck_values <- function(input,
   #-------------------------------------------------------------------------------
   # the window in points, and the population guard as ONE minimum count
 
-  width <- qc_window_points(window_size, input$qc_info$dataset_temperature$time_step_sec, "window_size")
+  step_sec <- input$qc_info$dataset_temperature$time_step_sec
+  width <- qc_window_points(window_size, step_sec, "window_size")
+  # a coarse resolution produces genuine plateaus; say so instead of flagging fog
+  resolution <- input$qc_info$dataset_temperature$resolution
+  if (is.finite(resolution) && resolution >= 0.05 && (width - 1) * step_sec < 6 * 3600)
+    warning(sprintf("window_size '%s' at a value resolution of %g K: genuine plateaus of that length occur in fog; 6 hours gave no false flags on 0.1 K series.",
+                    if (inherits(window_size, "difftime")) format(window_size) else window_size, resolution))
   # "at most na_tolerance_frac NA" and "at least min_non_na valid" are both
   # lower bounds on the valid count; the stricter one applies
   min_valid <- max(min_non_na, width - floor(na_tolerance_frac * width))
@@ -138,6 +147,7 @@ T_QC_4_stuck_values <- function(input,
                                         window_size          = window_size,
                                         width_points         = width,
                                         min_valid            = min_valid,
+                                        resolution           = resolution,
                                         na_tolerance_frac    = na_tolerance_frac,
                                         min_non_na           = min_non_na,
                                         sd_tol               = sd_tol)

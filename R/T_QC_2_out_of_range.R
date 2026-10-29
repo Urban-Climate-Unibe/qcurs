@@ -7,8 +7,11 @@
 #' @param season_thresholds Named list winter/spring/summer/autumn, each
 #'   list(min_val, max_val), in deg C. Values BELOW min_val or ABOVE max_val
 #'   are flagged. The defaults are the Bern bounds of the published pipeline
-#'   with the summer minimum corrected to -5.85 (published as 7.85, a sign
-#'   error that would flag every cool summer night).
+#'   with the summer and autumn minima corrected to -5.85 and -19.90. The
+#'   published 7.85 and -8.42 are the seasonal extreme PLUS 6 instead of
+#'   minus 6 (winter and spring are extreme minus 6): the Bern-Zollikofen
+#'   autumn minimum 1995-2023 is -13.9, and -8.42 flags every cold November
+#'   night at a rural site.
 #' @param verbose Report the per-season tally.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
@@ -32,7 +35,7 @@ T_QC_2_out_of_range <- function(input,
                                   winter = list(min_val = -24.44, max_val = 23.54),
                                   spring = list(min_val = -21.05, max_val = 38.08),
                                   summer = list(min_val =  -5.85, max_val = 46.26),
-                                  autumn = list(min_val =  -8.42, max_val = 40.87)),
+                                  autumn = list(min_val = -19.90, max_val = 40.87)),
                                 verbose = TRUE) {
 
 #-------------------------------------------------------------------------------

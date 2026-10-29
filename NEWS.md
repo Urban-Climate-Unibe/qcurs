@@ -1,3 +1,21 @@
+# qcurs 0.3.2 (2026-10-29)
+
+## Method
+
+* `T_QC_2_out_of_range()`: the autumn minimum is -19.90 (was -8.42). Same
+  sign error as the summer bound: the published value is the seasonal extreme
+  plus 6 instead of minus 6 (the Bern-Zollikofen autumn minimum 1995-2023 is
+  -13.9). Healthy MeteoSwiss stations in Bern, Thun and Interlaken fell below
+  -8.42 in November 2024 and 2025.
+* `T_QC_3_time_consistency()`: `threshold` default 4 K (was 6). On six years
+  of 10-minute data from three stations the largest genuine isolated
+  deviation is below 4 K; 6 K caught nothing that 4 K does not.
+* `qc_prepare_input()` records the value `resolution` of the dataset (the
+  smallest step between distinct values); `T_QC_4_stuck_values()` reports it
+  and warns when the window is shorter than 6 hours at 0.05 K or coarser,
+  because at that resolution fog produces genuine plateaus of that length
+  (2020-2025 MeteoSwiss series: 1 hour 2000-4200 false flags, 6 hours none).
+
 # qcurs 0.3.1 (2026-10-29)
 
 ## Method

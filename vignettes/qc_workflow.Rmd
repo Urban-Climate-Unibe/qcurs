@@ -103,24 +103,24 @@ t_res <- T_QC_1_gross_error(t_x,
 ```
 
 ```{r t2}
-# seasonal bounds in deg C; the summer minimum is the one worth checking for cold rural sites
+# seasonal bounds in deg C; the summer and autumn minima are the ones worth checking for cold rural sites
 t_res <- T_QC_2_out_of_range(t_res,
                              season_thresholds = list(
                                winter = list(min_val = -24.44, max_val = 23.54),
                                spring = list(min_val = -21.05, max_val = 38.08),
                                summer = list(min_val =  -5.85, max_val = 46.26),      # <-
-                               autumn = list(min_val =  -8.42, max_val = 40.87)))
+                               autumn = list(min_val = -19.90, max_val = 40.87)))   # <-
 ```
 
 ```{r t3}
 t_res <- T_QC_3_time_consistency(t_res,
                                  dt = 3,          # half window in steps
-                                 threshold = 6)   # K
+                                 threshold = 4)   # K
 ```
 
 ```{r t4}
-# the window is also the detection delay in live data; check winter plateaus
-# before shortening it
+# the window is also the detection delay in live data; shorten it only for
+# loggers resolving 0.01 K or finer - the level warns otherwise
 t_res <- T_QC_4_stuck_values(t_res,
                              window_size = "6 hours",                                 # <-
                              na_tolerance_frac = 0.5,

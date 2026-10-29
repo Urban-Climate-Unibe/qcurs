@@ -25,7 +25,7 @@ under GitHub > Settings > Developer settings > Personal access tokens (scope
 From a downloaded tarball or zip:
 
 ```r
-remotes::install_local("qcurs_0.3.1.tar.gz")
+remotes::install_local("qcurs_0.3.2.tar.gz")
 ```
 
 Needs `xts`, `zoo`, `geosphere`; `remotes` installs them.
@@ -173,9 +173,9 @@ data. If you publish an interpolated series, say so and publish the codes.
 | level | test | default |
 |---|---|---|
 | T1 | outside physical bounds | > 60 or <= -40 °C |
-| T2 | outside the seasonal bounds | Bern bounds of the published pipeline, summer minimum corrected to -5.85 °C |
-| T3 | off the window median AND the past AND the future | 6 K, ±3 steps |
-| T4 | no variation in a window with enough valid values | 6 h, sd 0, ≥ 50 % valid, ≥ 5 values |
+| T2 | outside the seasonal bounds | Bern bounds of the published pipeline, summer and autumn minima corrected to -5.85 / -19.90 °C |
+| T3 | off the window median AND the past AND the future | 4 K, ±3 steps |
+| T4 | no variation in a window with enough valid values | 6 h, sd 0, ≥ 50 % valid, ≥ 5 values; warns below 6 h at a resolution ≥ 0.05 K |
 | T5 | beyond Q1/Q3 ± 4·IQR of the station-month | ≥ 300 values, more than one year |
 | T6 | off the weighted neighbour consensus | max(6σ, 3 K), 3 km, 5 compatible neighbours, ≥ 2 valid |
 | T7 | 99 % extreme against all 5 neighbours AND both time neighbours | 2500 m |

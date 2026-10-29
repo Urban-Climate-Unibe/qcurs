@@ -25,8 +25,9 @@
 #'   \describe{
 #'     \item{qc_data}{the (possibly already cleaned) data as `xts`}
 #'     \item{qc_data_flagged}{the flag matrix as `xts`, same shape as `qc_data`}
-#'     \item{qc_info}{the growing record; `dataset_<what>` (and on the first
-#'       level `conversion_<what>`) is filled here}
+#'     \item{qc_info}{the growing record; `dataset_<what>` (grid, time step,
+#'       value resolution; and on the first level `conversion_<what>`) is
+#'       filled here}
 #'   }
 #'
 #' @examples
@@ -151,6 +152,12 @@ qc_prepare_input <- function(input, what = "temperature", level = NULL) {
                       sum(steps != time_step_sec), length(steps), time_step_sec / 60))
   }
 
+  # ... the value resolution: the smallest step between two distinct values.
+  #     Level 4 needs it - a stuck window has to be longer than any genuine
+  #     plateau the sensor can produce at this resolution
+  vals <- sort(unique(round(as.vector(coredata(x)), 6)))
+  resolution <- if (length(vals) > 1) min(diff(vals)) else NA_real_
+
   # ... check whether qc_info exists. if not, create it
   if (is.null(input$qc_info)) input$qc_info <- list()
   # ... a second run of the same level would overwrite its report in silence
@@ -168,7 +175,8 @@ qc_prepare_input <- function(input, what = "temperature", level = NULL) {
                                    time_start           = index(x)[1],
                                    time_end             = index(x)[nrow(x)],
                                    time_step_sec        = time_step_sec,
-                                   irregular_time_steps = irregular)
+                                   irregular_time_steps = irregular,
+                                   resolution           = resolution)
 
   # hand the validated chain list back to the calling level
   input
