@@ -13,7 +13,7 @@ RH_QC_7_dewpoint_consistency(
   radius_m = 3000,
   k_neighbours = 5,
   min_neighbours = 2,
-  landuse_mode = c("graded", "strict"),
+  landuse_mode = c("graded", "strict", "none"),
   verbose = TRUE
 )
 }
@@ -37,8 +37,14 @@ NULL (default) skips the level.}
 
 \item{min_neighbours}{Minimum valid neighbours to judge at all.}
 
-\item{landuse_mode}{"graded" (same class 1.0, vegetated/forest pairs 0.4,
-else 0) or "strict" (same class only).}
+\item{landuse_mode}{"graded" (paper: same class 1.0, vegetated/forest pairs
+0.4, else 0), "strict" (same class only) or "none" (distance only - for a
+small network where the landuse mask leaves hardly any station with the
+required neighbours; Biel goes from 1 to 6 evaluable stations). "none"
+buys that coverage with landuse-driven objections: on the clean Biel
+summer it removes 0.75 percent of the values, mostly late afternoon at
+the vegetated and the water site, where they genuinely differ from the
+sealed neighbours by more than 3 K. Look at the flags before trusting them.}
 
 \item{verbose}{Report the tally and the never-evaluated stations.}
 }

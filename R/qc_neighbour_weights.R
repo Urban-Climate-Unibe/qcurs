@@ -19,7 +19,8 @@
 #' @param radius_m Maximum neighbour distance in metres.
 #' @param k_neighbours At most this many nearest COMPATIBLE neighbours.
 #' @param landuse_mode "graded" (same class 1, vegetated/forest pairs 0.4,
-#'   else 0) or "strict" (same class only).
+#'   else 0), "strict" (same class only) or "none" (distance only; for small
+#'   networks where the landuse mask leaves nobody with neighbours).
 #'
 #' @return list(ids = stations used, in W's order; W = weight matrix;
 #'   sigma_d = Gaussian bandwidth in metres). Empty ids, an empty W and
@@ -28,7 +29,7 @@
 #' @keywords internal
 #' @noRd
 qc_neighbour_weights <- function(metadata, stations, radius_m, k_neighbours,
-                                 landuse_mode = c("graded", "strict")) {
+                                 landuse_mode = c("graded", "strict", "none")) {
   landuse_mode <- match.arg(landuse_mode)
   # tolerate tibbles and friends
   md <- as.data.frame(metadata)
@@ -51,7 +52,8 @@ qc_neighbour_weights <- function(metadata, stations, radius_m, k_neighbours,
   # align the metadata rows to the order of the used stations
   md <- md[match(ids, md$ID), ]
   # a missing landuse would silently produce zero weights; make it visible once
-  if (anyNA(md$Landuse) || any(!nzchar(md$Landuse))) {
+  # (not in "none" mode, where the landuse is not used)
+  if (landuse_mode != "none" && (anyNA(md$Landuse) || any(!nzchar(md$Landuse)))) {
     bad <- md$ID[is.na(md$Landuse) | !nzchar(md$Landuse)]
     warning(sprintf("No landuse for: %s - these stations get zero weight everywhere.",
                     paste(bad, collapse = ", ")))
@@ -69,8 +71,8 @@ qc_neighbour_weights <- function(metadata, stations, radius_m, k_neighbours,
   # the green classes - BOTH forest spellings
   veg <- c("Vegetated Areas", "Forest", "Forests")
   lu <- as.character(md$Landuse)
-  # pairwise landuse factor lambda
-  LU <- outer(lu, lu, Vectorize(function(a, b) {
+  # pairwise landuse factor lambda; "none" treats every pair as compatible
+  LU <- if (landuse_mode == "none") matrix(1, ns, ns) else outer(lu, lu, Vectorize(function(a, b) {
     # identical non-empty class: full weight
     if (a == b && nzchar(a)) return(1)
     # graded mode only: vegetated/forest pairs get reduced weight

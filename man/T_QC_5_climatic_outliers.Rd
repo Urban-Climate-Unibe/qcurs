@@ -2,12 +2,13 @@
 % Please edit documentation in R/T_QC_5_climatic_outliers.R
 \name{T_QC_5_climatic_outliers}
 \alias{T_QC_5_climatic_outliers}
-\title{Temperature QC Level 5: climatic outliers}
+\title{Temperature QC Level 5: climatic outliers of the daily extremes}
 \usage{
 T_QC_5_climatic_outliers(
   input,
-  ext_lim_factor = 4,
-  min_n = 300,
+  ext_lim_factor = 2.5,
+  min_days = 60,
+  min_obs_per_day = 72,
   require_multi_year = TRUE,
   verbose = TRUE
 )
@@ -15,9 +16,12 @@ T_QC_5_climatic_outliers(
 \arguments{
 \item{input}{xts of temperature, or list from a previous QC level.}
 
-\item{ext_lim_factor}{Multiplier m on the IQR (paper: 4, empirical).}
+\item{ext_lim_factor}{Multiplier m on the IQR of the daily extremes.}
 
-\item{min_n}{Minimum valid values a station-month needs to be judged.}
+\item{min_days}{Minimum number of judged days a station-month needs.}
+
+\item{min_obs_per_day}{Valid values a day needs to contribute an extreme
+(72 = half of a 10-minute day).}
 
 \item{require_multi_year}{Only judge a station-month whose sample spans
 more than one calendar year.}
@@ -27,16 +31,33 @@ more than one calendar year.}
 \value{
 The chain list with qc_data, qc_data_flagged and qc_info. The
   refused station-months are listed in
-  `qc_info$t5_climatic_outliers$refused`.
+  `qc_info$t5_climatic_outliers$refused`, the bounds that were applied in
+  `qc_info$t5_climatic_outliers$bounds` (one row per judged
+  station-month).
 }
 \description{
-Removes values beyond Q1 - m*IQR / Q3 + m*IQR of the station's own
-distribution per calendar month, all years pooled.
+A station-specific, month-specific plausibility bound from the station's
+own history. Per station and calendar month, all years pooled, the daily
+maxima and the daily minima are collected; a day whose maximum exceeds
+Q3 + m * IQR of the pooled daily maxima, or whose minimum falls below
+Q1 - m * IQR of the pooled daily minima, is objected to - on the cells
+beyond that bound, not the whole day. Only these outer tails are tested:
+a cool summer day or a mild winter night is weather, not a sensor fault.
 }
 \details{
-Two guards apply: a real minimum sample size, and - by default -
-the requirement that a month's sample spans more than one calendar year.
-set `require_multi_year = FALSE` to override.
+The published chain applies the IQR rule to the 10-minute values, where
+the bounds come out 25 K beyond the quartiles and never bite; on the
+daily extremes with the published m = 4 they still sit 25 K out. With
+m = 2.5 the bounds lie about 15 K above Q3 and 11 K below Q1 - Bern in June
+41 instead of the 46 of level 2, January -16 instead of -24 - and on six
+years of three MeteoSwiss stations objected to four values in all: two
+December nights at Thun, 0.9 K below its bound.
+
+Two guards apply: a station-month needs `min_days` days with at least
+`min_obs_per_day` values, and - by default - its sample must span more
+than one calendar year. A single-season campaign is therefore refused,
+station-month by station-month, and says so. Set
+`require_multi_year = FALSE` to override.
 }
 \examples{
 \dontrun{

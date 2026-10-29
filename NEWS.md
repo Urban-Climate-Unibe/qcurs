@@ -1,3 +1,27 @@
+# qcurs 0.3.4 (2026-10-29)
+
+## Method
+
+* `T_QC_5_climatic_outliers()` judges the DAILY EXTREMES, as the method paper
+  intends, instead of the 10-minute values: per station and pooled calendar
+  month, a day whose maximum exceeds Q3 + m * IQR of the daily maxima or whose
+  minimum falls below Q1 - m * IQR of the daily minima is objected to, on the
+  cells beyond the bound. Outer tails only. `ext_lim_factor` defaults to 2.5:
+  the published 4 leaves the bounds 25 K beyond the quartiles on 10-minute
+  values and on daily extremes alike and never bites; 2.5 objected to four
+  values on six years of three MeteoSwiss stations (two cold December
+  nights at Thun). `min_n` (values) is replaced by
+  `min_days` (60) and `min_obs_per_day` (72); the applied bounds are recorded
+  in `qc_info$t5_climatic_outliers$bounds`. Single-season campaigns are
+  refused as before.
+* `landuse_mode = "none"` for `T_QC_6_spatial_consistency()` and
+  `RH_QC_7_dewpoint_consistency()`: distance only, every pair compatible. For
+  small networks where the landuse mask leaves hardly any station with
+  neighbours - Biel goes from 1 to 6 evaluable stations. The price: on the
+  clean Biel summer "none" objects to 0.75 percent of the values, mostly late
+  afternoon at the vegetated and the water site, which genuinely differ from
+  the sealed neighbours by more than 3 K then. Default stays "graded".
+
 # qcurs 0.3.3 (2026-10-29)
 
 ## Structure

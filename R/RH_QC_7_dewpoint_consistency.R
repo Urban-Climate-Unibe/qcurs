@@ -26,8 +26,14 @@
 #' @param radius_m Maximum neighbour distance in metres.
 #' @param k_neighbours At most this many nearest COMPATIBLE neighbours.
 #' @param min_neighbours Minimum valid neighbours to judge at all.
-#' @param landuse_mode "graded" (same class 1.0, vegetated/forest pairs 0.4,
-#'   else 0) or "strict" (same class only).
+#' @param landuse_mode "graded" (paper: same class 1.0, vegetated/forest pairs
+#'   0.4, else 0), "strict" (same class only) or "none" (distance only - for a
+#'   small network where the landuse mask leaves hardly any station with the
+#'   required neighbours; Biel goes from 1 to 6 evaluable stations). "none"
+#'   buys that coverage with landuse-driven objections: on the clean Biel
+#'   summer it removes 0.75 percent of the values, mostly late afternoon at
+#'   the vegetated and the water site, where they genuinely differ from the
+#'   sealed neighbours by more than 3 K. Look at the flags before trusting them.
 #' @param verbose Report the tally and the never-evaluated stations.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info.
@@ -49,7 +55,7 @@ RH_QC_7_dewpoint_consistency <- function(input,
                                          radius_m = 3000,
                                          k_neighbours = 5,
                                          min_neighbours = 2,
-                                         landuse_mode = c("graded", "strict"),
+                                         landuse_mode = c("graded", "strict", "none"),
                                          verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks

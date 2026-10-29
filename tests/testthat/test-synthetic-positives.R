@@ -1,17 +1,46 @@
 # Levels 5 and 7 legitimately refuse on the Biel campaign, so their positive
 # detection paths are proven on minimal synthetic records instead.
 
-test_that("level 5 catches a climatic outlier on a two-year record", {
+test_that("level 5 catches a hot day and a cold night on a two-year record, not a cool summer day", {
   set.seed(7)
   ti <- seq(as.POSIXct("2023-01-01", tz = "UTC"), by = "1 hour", length.out = 2 * 365 * 24)
   doy <- as.numeric(format(ti, "%j")); hod <- as.numeric(format(ti, "%H"))
+  # seasonal cycle, diurnal cycle, a synoptic swing of +-3 K over ten days and
+  # noise: the daily extremes then spread over about 4 K within a month, as
+  # they do at a real station
   v <- 10 + 10 * sin(2 * pi * (doy - 100) / 365) + 4 * sin(2 * pi * (hod - 9) / 24) +
-       stats::rnorm(length(ti), 0, 1.5)
-  v[5000] <- v[5000] + 40
+       3 * sin(2 * pi * doy / 10) + stats::rnorm(length(ti), 0, 1.5)
+  day <- format(ti, "%Y-%m-%d")
+  hot  <- which(day == "2023-07-10" & hod %in% 11:16)     # a radiation-type excursion: +15 K for 6 hours
+  cold <- which(day == "2024-01-20" & hod %in% 0:5)       # a fault at night: -15 K for 6 hours
+  cool <- which(day == "2023-08-02")                      # a cold front: the whole day 6 K below normal
+  v[hot] <- v[hot] + 15; v[cold] <- v[cold] - 15; v[cool] <- v[cool] - 6
   x <- xts::xts(matrix(v, ncol = 1, dimnames = list(NULL, "S1")), order.by = ti)
-  f <- zoo::coredata(T_QC_5_climatic_outliers(x, verbose = FALSE)$qc_data_flagged)
-  expect_equal(unname(f[5000, 1]), 5)
-  expect_lte(sum(f == 5, na.rm = TRUE), 6)
+  # hourly data: 12 values make a day; 50 days, because two Februaries hold 57
+  r <- T_QC_5_climatic_outliers(x, min_days = 50, min_obs_per_day = 12, verbose = FALSE)
+  f <- zoo::coredata(r$qc_data_flagged)
+  # the excursion is found through the day's extreme; flagged are the cells
+  # beyond the bound, so the hours that straddle it may stay
+  expect_gte(mean(f[hot, 1] == 5), 0.5)                   # the hot hours, by the daily maximum
+  expect_gte(mean(f[cold, 1] == 5), 0.5)                  # the cold hours, by the daily minimum
+  expect_true(all(f[cool, 1] == 0))                       # a cool day is weather, not a fault
+  expect_lte(sum(f == 5, na.rm = TRUE), length(hot) + length(cold) + 6)
+  # the bounds are on record, one row per judged station-month
+  expect_equal(nrow(r$qc_info$t5_climatic_outliers$bounds), 12)
+  expect_true(all(r$qc_info$t5_climatic_outliers$bounds$tmax_upper > r$qc_info$t5_climatic_outliers$bounds$tmin_lower))
+})
+
+test_that("landuse_mode none gives a small network its neighbours back", {
+  x  <- qc_as_xts(biel_wide(), time_col = "time", verbose = FALSE)
+  md <- biel_meta()
+  r_graded <- T_QC_6_spatial_consistency(x, metadata = md, verbose = FALSE)
+  r_none   <- T_QC_6_spatial_consistency(x, metadata = md, landuse_mode = "none", verbose = FALSE)
+  expect_length(r_graded$qc_info$t6_spatial_consistency$never_evaluated, 6)
+  expect_equal(r_none$qc_info$t6_spatial_consistency$never_evaluated, "Log_B7")   # alone beyond 3 km
+  expect_equal(r_none$qc_info$t6_spatial_consistency$landuse_mode, "none")
+  # the planted +12 K offset at Log_B4 is still found
+  e5 <- planted_cells("E5", r_none$qc_data_flagged)
+  expect_gte(mean(zoo::coredata(r_none$qc_data_flagged)[e5] == 6), 0.5)
 })
 
 test_that("level 7 catches a spatiotemporal spike on a dense network", {

@@ -129,11 +129,13 @@ t_res <- T_QC_4_stuck_values(t_res,
 ```
 
 ```{r t5}
-# refuses on a single-season campaign; set require_multi_year = FALSE only if
-# you know what a one-year monthly IQR means for your data
+# daily extremes against the station's own pooled month; refuses on a
+# single-season campaign - set require_multi_year = FALSE only if you know
+# what a one-year monthly IQR means for your data
 t_res <- T_QC_5_climatic_outliers(t_res,
-                                  ext_lim_factor = 4,
-                                  min_n = 300,
+                                  ext_lim_factor = 2.5,
+                                  min_days = 60,
+                                  min_obs_per_day = 72,
                                   require_multi_year = TRUE)
 ```
 
@@ -144,7 +146,7 @@ t_res <- T_QC_6_spatial_consistency(t_res, metadata = md,
                                     radius_m = 3000,
                                     k_neighbours = 5,
                                     min_neighbours = 2,
-                                    landuse_mode = "graded")
+                                    landuse_mode = "graded")   # "none" = distance only, for small networks
 ```
 
 ```{r t7}
@@ -297,7 +299,7 @@ rh_res <- RH_QC_7_dewpoint_consistency(rh_res, temperature = t_res, metadata = m
                                        radius_m = 3000,
                                        k_neighbours = 5,
                                        min_neighbours = 2,
-                                       landuse_mode = "graded")
+                                       landuse_mode = "graded")   # "none" = distance only, for small networks
 ```
 
 ```{r rh8, eval = run_humidity && interpolate}
