@@ -25,7 +25,7 @@ under GitHub > Settings > Developer settings > Personal access tokens (scope
 From a downloaded tarball or zip:
 
 ```r
-remotes::install_local("qcurs_0.3.4.tar.gz")
+remotes::install_local("qcurs_0.3.5.tar.gz")
 ```
 
 Needs `xts`, `zoo`, `geosphere`; `remotes` installs them.
@@ -126,7 +126,7 @@ res$qc_info          # one record per level, in the order they ran
 | `5` | climatic outlier (monthly IQR) | not following its own temperature |
 | `6` | off the neighbour consensus | stays below saturation while the network is saturated |
 | `7` | extreme in space and time at once | dewpoint off the neighbour consensus |
-| `8` | diurnal range collapsed (indoors) | - |
+| `8` | logger indoors: range collapsed, daily means off the weather | - |
 | `50` | plain gap, filled by the interpolation | same |
 | `50+N` | removed by level N, refilled | same |
 
@@ -148,7 +148,8 @@ i6$never_evaluated        # those stations by name
 ```
 
 The other refusals by name: `t5_climatic_outliers$refused` (station-months),
-`t7_spatiotemporal_consistency$skipped` (stations), `t8_diurnal_range$days_unjudged`,
+`t7_spatiotemporal_consistency$skipped` (stations), `t8_diurnal_range$days_unjudged`
+and `$runs_undecided`,
 `rh1_inherit_temperature$loggers_unmatched`, `rh5_decoupling$skipped_stations`
 and `$days_unjudged`,
 `rh7_dewpoint_consistency$never_evaluated`. A level that could not run at all
@@ -188,7 +189,7 @@ data. If you publish an interpolated series, say so and publish the codes.
 | T5 | daily maximum above Q3 + m·IQR or daily minimum below Q1 − m·IQR of the station's pooled month | m 2.5, ≥ 60 days, more than one year |
 | T6 | off the weighted neighbour consensus | max(6σ, 3 K), 3 km, 5 compatible neighbours, ≥ 2 valid; `landuse_mode = "none"` for small networks (coverage at the price of landuse-driven flags: clean Biel 0.75 %) |
 | T7 | 99 % extreme against all 5 neighbours AND both time neighbours | 2500 m |
-| T8 | diurnal range below 0.4 of the network median of the same day, ≥ 2 days in a row | ≥ 72 values/day, ≥ 3 stations |
+| T8 | diurnal range below 0.4 of the network median of the same day, ≥ 3 days in a row, AND the daily means over the run swing less than 0.4 of the network's (a logger indoors; fog still follows the weather) | ≥ 72 values/day, ≥ 3 stations, network swing ≥ 2 K |
 | T9 | linear fill | gaps ≤ 5 steps |
 | RH1 | inherit temperature flags (not the plain gap fill 50) | |
 | RH2 | outside the physical range | 0-105 % |

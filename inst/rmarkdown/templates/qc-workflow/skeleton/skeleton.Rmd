@@ -157,12 +157,14 @@ t_res <- T_QC_7_spatiotemporal_consistency(t_res, metadata = md,
 ```
 
 ```{r t8}
-# relative to the network's range on the same day: fog collapses everyone, an indoor sensor collapses alone
+# a logger that went indoors: diurnal range collapsed against the network AND
+# daily means no longer following the weather; fog fails the second test
 t_res <- T_QC_8_diurnal_range(t_res,
                               range_frac = 0.4,
-                              min_consecutive_days = 2,
+                              min_consecutive_days = 3,
                               min_obs_per_day = 72,
-                              min_stations = 3)
+                              min_stations = 3,
+                              min_network_swing = 2)   # K the network must move over the run
 ```
 
 ```{r t9, eval = interpolate}
@@ -193,6 +195,7 @@ t_res$qc_info$t5_climatic_outliers$refused
 t_res$qc_info$t6_spatial_consistency$never_evaluated
 t_res$qc_info$t7_spatiotemporal_consistency$skipped
 t_res$qc_info$t8_diurnal_range$days_unjudged
+t_res$qc_info$t8_diurnal_range$runs_undecided
 ```
 
 One station, raw against cleaned, flagged points coloured by level:

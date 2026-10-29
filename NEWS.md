@@ -1,3 +1,20 @@
+# qcurs 0.3.5 (2026-10-29)
+
+## Method
+
+* `T_QC_8_diurnal_range()` is now specifically the test for a logger that was
+  taken down and kept logging indoors. A collapsed diurnal range alone also
+  describes a station alone under high fog (Grenchen, 20/21 January 2026:
+  2.2 K against 7.7 K in the network, 288 values flagged); what separates
+  the two is the weather: the fog station still takes every front with the
+  network (daily means r = 0.95), the logger in a heated room sits at 21. A
+  collapsed run is therefore objected to only when the swing of its daily
+  means stays below `range_frac` of the network's swing over the same days.
+  Runs during a calm spell (network swing below `min_network_swing`, 2 K)
+  are not decidable and are listed in `runs_undecided`.
+  `min_consecutive_days` defaults to 3 (was 2). The planted Biel indoor
+  episode is found as before.
+
 # qcurs 0.3.4 (2026-10-29)
 
 ## Method

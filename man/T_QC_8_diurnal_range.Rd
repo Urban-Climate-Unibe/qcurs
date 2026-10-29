@@ -2,25 +2,26 @@
 % Please edit documentation in R/T_QC_8_diurnal_range.R
 \name{T_QC_8_diurnal_range}
 \alias{T_QC_8_diurnal_range}
-\title{Temperature QC Level 8: diurnal range collapse}
+\title{Temperature QC Level 8: diurnal range collapse (a logger that went indoors)}
 \usage{
 T_QC_8_diurnal_range(
   input,
   range_frac = 0.4,
-  min_consecutive_days = 2,
+  min_consecutive_days = 3,
   min_obs_per_day = 72,
   min_stations = 3,
+  min_network_swing = 2,
   verbose = TRUE
 )
 }
 \arguments{
 \item{input}{xts of temperature, or list from a previous QC level.}
 
-\item{range_frac}{Threshold as a fraction of the network median range of
-the same day.}
+\item{range_frac}{Threshold as a fraction of the network: for the diurnal
+range of each day, and for the swing of the daily means over a run.}
 
-\item{min_consecutive_days}{Days in a row below the threshold before any of
-them is objected to.}
+\item{min_consecutive_days}{Collapsed days in a row before a run is judged
+at all (3: a swing over two days is just one difference).}
 
 \item{min_obs_per_day}{Valid values a day needs to have its range judged
 (72 = half of a 10-minute day).}
@@ -29,24 +30,45 @@ them is objected to.}
 as the yardstick; with fewer stations than that in the data the level
 skips itself and says why.}
 
+\item{min_network_swing}{Minimum swing of the network's daily means over a
+run, in Kelvin, for the run to be decidable.}
+
 \item{verbose}{Report the tally.}
 }
 \value{
-The chain list with qc_data, qc_data_flagged and qc_info.
+The chain list with qc_data, qc_data_flagged and qc_info. Days
+  without a network yardstick are in `qc_info$t8_diurnal_range$days_unjudged`,
+  collapsed runs the weather did not allow to decide in `runs_undecided`.
 }
 \description{
-A sensor reading indoors (or otherwise decoupled from
-the atmosphere) produces values that might pass every classic test - physically
-plausible, locally smooth, varying and at stations without
-landuse-compatible neighbours it is also spatially unchecked.
+The case this level is for: a logger was taken down but not checked out
+and keeps logging in an office or a store room. Its values pass every
+classic test - physically plausible, smooth, varying a little - and at a
+station without landuse-compatible neighbours they are spatially unchecked
+too.
 }
 \details{
-This level removes days whose diurnal range falls below a fraction of the
-NETWORK's range on the SAME day, for a minimum number of CONSECUTIVE days.
-The yardstick is the median daily range over all stations with a range
-that day: a fog week collapses every station together and stays invisible,
-an indoor sensor collapses alone and shows. It needs no metadata, only
-enough stations reporting on the same day.
+Two things give such a logger away, and both are needed. First, its
+diurnal range collapses while the network's does not: a day whose range is
+below `range_frac` of the NETWORK's median range on the same day counts as
+collapsed, and only `min_consecutive_days` collapsed days in a row count at
+all. A fog week collapses every station together and stays invisible.
+Second, over that run its DAILY MEANS no longer follow the weather: a
+station alone under high fog has no diurnal cycle either, but it still
+takes every cold front and every mild spell with the network (Grenchen,
+January 2026: daily means -2.4 to +3.4 like the network, r = 0.95), while a
+logger in a heated room sits at 21 whatever happens outside. So a run is
+objected to only when the swing of the station's daily means stays below
+`range_frac` of the network's swing over the same days. If the network
+itself hardly moved during the run (less than `min_network_swing`), the
+run cannot be decided; it is listed in `runs_undecided` and will be
+decided once it has lasted through a change of weather - a logger indoors
+waits that out, fog does not. A logger in an UNHEATED room follows the
+weather in a damped way and may escape; the check-out date in the
+metadata remains the primary source, this level is the net underneath.
+
+The level needs no metadata, only enough stations reporting on the same
+day.
 }
 \examples{
 \dontrun{

@@ -128,20 +128,37 @@ test_that("qc_fill_gaps fills short gaps, codes refills by level, leaves long ga
   expect_true(is.na(r2$X[2, 1])); expect_equal(unname(r2$previous_flag[2, 1]), 3)  # protected
 })
 
-test_that("T8 ignores a network-wide fog week and catches a lone indoor sensor", {
+test_that("T8 tells a logger indoors from fog: network-wide, lone under fog, calm spell", {
   set.seed(7)
-  ti   <- seq(as.POSIXct("2025-11-01", tz = "UTC"), by = "10 min", length.out = 20 * 144)
+  ti   <- seq(as.POSIXct("2025-11-01", tz = "UTC"), by = "10 min", length.out = 30 * 144)
   mins <- as.numeric(format(ti, "%H")) * 60 + as.numeric(format(ti, "%M"))
   day  <- as.integer(format(ti, "%d"))
-  amp  <- ifelse(day %in% 8:12, 0.6, 4)                      # fog: every station drops to ~1 K range
-  base <- 5 + amp * sin(2 * pi * (mins - 540) / 1440)
+  amp  <- ifelse(day %in% 8:12, 0.6, 4)                      # fog week: every station drops to ~1 K range
+  # the weather moves: a 6 K synoptic swing over about a week - except days
+  # 24-28, a calm spell where the network's daily means hardly change
+  syn  <- ifelse(day %in% 24:28, 2, 3 * sin(2 * pi * day / 8))
+  base <- 5 + syn + amp * sin(2 * pi * (mins - 540) / 1440)
   X <- sapply(1:6, function(k) base + rnorm(length(ti), 0, 0.15)); colnames(X) <- paste0("S", 1:6)
-  X[day %in% 15:19, 6] <- 21 + 0.3 * sin(2 * pi * (mins[day %in% 15:19] - 540) / 1440)   # S6 alone goes indoors
+  # S6 alone goes indoors on days 15-19: 21 degrees, no weather
+  X[day %in% 15:19, 6] <- 21 + 0.3 * sin(2 * pi * (mins[day %in% 15:19] - 540) / 1440)
+  # S5 alone sits under high fog on days 2-6: no diurnal cycle, but it takes
+  # the synoptic swing with everyone else
+  f5 <- day %in% 2:6
+  X[f5, 5] <- 5 + syn[f5] + 0.5 * sin(2 * pi * (mins[f5] - 540) / 1440) + rnorm(sum(f5), 0, 0.15)
+  # S4 goes indoors on days 24-28, during the calm spell: not decidable yet
+  X[day %in% 24:28, 4] <- 21 + 0.3 * sin(2 * pi * (mins[day %in% 24:28] - 540) / 1440)
   r <- T_QC_8_diurnal_range(xts::xts(X, order.by = ti), verbose = FALSE)
   F <- zoo::coredata(r$qc_data_flagged)
-  expect_equal(sum(F[day %in% 8:12, ] == 8), 0)               # fog is weather, not a fault
+  expect_equal(sum(F[day %in% 8:12, ] == 8), 0)               # the fog week is weather, not a fault
   expect_equal(sum(F[day %in% 15:19, 6] == 8), 5 * 144)       # the indoor stretch, completely
-  expect_equal(sum(F[, 1:5] == 8), 0)                         # nobody else
+  expect_equal(sum(F[f5, 5] == 8), 0)                         # the lone fog station follows the weather
+  expect_equal(sum(F[day %in% 24:28, 4] == 8), 0)             # calm spell: undecided, not objected to
+  expect_length(r$qc_info$t8_diurnal_range$runs_undecided, 1)
+  expect_match(r$qc_info$t8_diurnal_range$runs_undecided, "^S4:2025-11-24")
+  expect_equal(sum(F[, 1:3] == 8), 0)                         # nobody else
+  # the same data with the weather test off (min_network_swing tiny) decides the calm run too
+  r3 <- T_QC_8_diurnal_range(xts::xts(X, order.by = ti), min_network_swing = 0.01, verbose = FALSE)
+  expect_equal(sum(zoo::coredata(r3$qc_data_flagged)[day %in% 24:28, 4] == 8), 5 * 144)
   # two stations are no network: the level skips itself instead of guessing
   r2 <- T_QC_8_diurnal_range(xts::xts(X[, 1:2], order.by = ti), verbose = FALSE)
   expect_true(r2$qc_info$t8_diurnal_range$skipped)
