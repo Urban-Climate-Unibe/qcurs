@@ -172,31 +172,12 @@ t_res <- T_QC_9_interpolate(t_res,
 
 ## 4. What came out
 
-```{r qc-summary-fun, include = FALSE}
-# one row per level and station: flagged, judged, and judged as share of the values
-qc_summary <- function(res, chain = c("t", "rh")) {
-  chain <- match.arg(chain)
-  keys  <- grep(paste0("^", chain, "[0-9]_"), names(res$qc_info), value = TRUE)
-  rows  <- lapply(keys, function(k) {
-    r <- res$qc_info[[k]]
-    if (is.null(r$n_flagged_by_station)) return(NULL)   # skipped levels, interpolation
-    data.frame(level = k, station = names(r$n_flagged_by_station),
-               flagged = as.integer(r$n_flagged_by_station),
-               judged  = as.integer(r$n_judged_by_station), stringsAsFactors = FALSE)
-  })
-  out <- do.call(rbind, rows)
-  n_valid <- colSums(!is.na(coredata(res$qc_data)) | coredata(res$qc_data_flagged) > 0)
-  out$judged_pct <- round(100 * out$judged / n_valid[out$station], 1)
-  out
-}
-```
-
 ```{r t-summary}
 FLG <- coredata(t_res$qc_data_flagged)
 # how many cells carry which code
 table(FLG, useNA = "ifany")
 # per level and station: what was flagged, and what the level actually looked at
-t_sum <- qc_summary(t_res, "t")
+t_sum <- qc_summary(t_res)
 # flagged
 xtabs(flagged ~ station + level, t_sum)
 # judged, as percent of the station's values - 0 means the level never reached it
@@ -327,7 +308,7 @@ rh_res <- RH_QC_8_interpolate(rh_res,
 
 ```{r rh-summary, eval = run_humidity}
 table(coredata(rh_res$qc_data_flagged), useNA = "ifany")
-rh_sum <- qc_summary(rh_res, "rh")
+rh_sum <- qc_summary(rh_res)
 xtabs(flagged ~ station + level, rh_sum)
 xtabs(judged_pct ~ station + level, rh_sum)
 # which temperature levels the humidity inherited from (the RH code is always 1)

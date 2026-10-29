@@ -1,3 +1,14 @@
+# qcurs 0.3.3 (2026-10-29)
+
+## Structure
+
+* `qc_summary()` is part of the package: one row per level and station with
+  flagged, judged and judged as a share of the observed values; it used to
+  live in the R Markdown template only. The template calls it now.
+* The vignette, a copy of the template, moved to `archiv/`; `R CMD check` is
+  clean of WARNINGs.
+* DESCRIPTION names both chains.
+
 # qcurs 0.3.2 (2026-10-29)
 
 ## Method

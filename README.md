@@ -25,7 +25,7 @@ under GitHub > Settings > Developer settings > Personal access tokens (scope
 From a downloaded tarball or zip:
 
 ```r
-remotes::install_local("qcurs_0.3.2.tar.gz")
+remotes::install_local("qcurs_0.3.3.tar.gz")
 ```
 
 Needs `xts`, `zoo`, `geosphere`; `remotes` installs them.
@@ -162,6 +162,15 @@ Every record also holds the parameters the level ran with. Together with
 `qc_data_flagged` that is the full audit trail: which cell, which level,
 which settings, and where a level was blind.
 
+`qc_summary()` puts the per-station counts of all levels into one table -
+flagged, judged, and judged as a share of the station's observed values:
+
+```r
+s <- qc_summary(res)
+xtabs(flagged ~ station + level, s)
+xtabs(judged_pct ~ station + level, s)   # 0 = the level never reached the station
+```
+
 ### Interpolation
 
 Levels T9 and RH8 ADD values. They are off in the runners (`interpolate = TRUE`
@@ -204,10 +213,11 @@ Three kinds of file in `R/`:
 - `qc_*.R` - everything around the tests: `qc_as_xts` and `qc_prepare_input`
   (input), `qc_window_points` (windows), `qc_distance_matrix` and
   `qc_neighbour_weights` (geometry), `qc_match_grid` (temperature onto the
-  humidity grid), `qc_fill_gaps` (interpolation).
+  humidity grid), `qc_fill_gaps` (interpolation), `qc_summary` (result).
 - `run_qc.R` - the two runners.
 
-Exported: the 17 levels, the 2 runners, `qc_as_xts`, `qc_prepare_input`.
+Exported: the 17 levels, the 2 runners, `qc_as_xts`, `qc_prepare_input`,
+`qc_summary`.
 Everything else is internal.
 
 ## Tests

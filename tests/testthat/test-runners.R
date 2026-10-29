@@ -45,7 +45,7 @@ test_that("params overrides reach their level", {
   expect_error(run_qc_temperature(f$tt, params = list(nope = list())), "params keys")
 })
 
-test_that("run_qc_humidity wires the temperature result into levels 1, 6 and 7", {
+test_that("run_qc_humidity wires the temperature result into levels 1, 5 and 7", {
   f <- runner_fixture()
   t_res <- run_qc_temperature(f$tt, metadata = f$md, verbose = FALSE)
   r <- run_qc_humidity(f$rh, temperature = t_res, metadata = f$md,

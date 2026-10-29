@@ -69,3 +69,31 @@ test_that("levels 6 and 7 survive metadata that match no station at all", {
   expect_warning(r_rh7 <- RH_QC_7_dewpoint_consistency(x, temperature = x, metadata = md, verbose = FALSE), "No metadata")
   expect_true(r_rh7$qc_info$rh7_dewpoint_consistency$skipped)
 })
+
+test_that("qc_summary lists every level that judged, with flags that match the records", {
+  ch <- biel_chain()
+  s  <- qc_summary(ch$res)
+  expect_named(s, c("level", "station", "flagged", "judged", "judged_pct"))
+  # levels 1-8 x 7 stations; the interpolation (9) adds values and has no row
+  expect_equal(nrow(s), 8 * 7)
+  expect_false("t9_interpolate" %in% s$level)
+  expect_equal(unique(s$level), paste0("t", 1:8, "_", c("gross_error", "out_of_range", "time_consistency",
+               "stuck_values", "climatic_outliers", "spatial_consistency", "spatiotemporal_consistency", "diurnal_range")))
+  # the per-level sums are the levels' own tallies
+  for (k in unique(s$level)) expect_equal(sum(s$flagged[s$level == k]), ch$res$qc_info[[k]]$n_flagged)
+  # judged never exceeds the observed values, and the share is a percentage
+  expect_true(all(s$judged_pct >= 0 & s$judged_pct <= 100))
+  # a level that never reached a station shows 0, not a clean bill
+  expect_equal(s$judged_pct[s$level == "t6_spatial_consistency" & s$station == "Log_B1"], 0)
+  # a humidity result picks its own chain and leaves the temperature records out
+  set.seed(5)
+  ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = 3 * 144)
+  tt <- xts::xts(matrix(18 + rnorm(length(ti) * 2, 0, 0.5), ncol = 2, dimnames = list(NULL, c("S1", "S2"))), order.by = ti)
+  rh <- xts::xts(matrix(70 + rnorm(length(ti) * 2, 0, 2),   ncol = 2, dimnames = list(NULL, c("S1", "S2"))), order.by = ti)
+  t_res  <- run_qc_temperature(tt, verbose = FALSE)
+  rh_res <- run_qc_humidity(rh, temperature = t_res, verbose = FALSE)
+  s_rh <- qc_summary(rh_res)
+  expect_true(all(grepl("^rh", s_rh$level)))
+  expect_true(all(grepl("^t", qc_summary(rh_res, "t")$level)))
+  expect_error(qc_summary(tt), "chain result")
+})
