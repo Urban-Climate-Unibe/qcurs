@@ -10,6 +10,8 @@ RH_QC_5_decoupling(
   decouple_r = -0.3,
   decouple_trange = 3,
   decouple_min_n = 60,
+  min_consecutive_days = 2,
+  max_network_frac = 0.25,
   verbose = TRUE
 )
 }
@@ -27,12 +29,20 @@ NULL (default) skips the level.}
 
 \item{decouple_min_n}{Minimum valid T/RH pairs per day.}
 
+\item{min_consecutive_days}{Judged days in a row a station must look
+decoupled before any of them is objected to.}
+
+\item{max_network_frac}{Share of the judged stations above which a day
+counts as a weather day and is not judged at all (needs at least two
+decoupled stations). 1 switches the rule off.}
+
 \item{verbose}{Report the tally.}
 }
 \value{
 The chain list with qc_data, qc_data_flagged and qc_info. Stations
   without a temperature twin are listed in
-  `qc_info$rh5_decoupling$skipped_stations`.
+  `qc_info$rh5_decoupling$skipped_stations`, the weather days in
+  `qc_info$rh5_decoupling$days_unjudged`.
 }
 \description{
 Over a day with a normal diurnal cycle, relative humidity tracks its own
@@ -47,10 +57,20 @@ The temperature is matched cell by cell, by exact time stamp and logger
 name (`qc_match_grid()`, the same rule as levels 1 and 7); a cell without
 a temperature twin is not judged. Days with less than `decouple_trange` of
 temperature amplitude are skipped, because without a diurnal cycle the
-correlation is meaningless - fog days would otherwise be flagged. The
-verdict is per day: all valid humidity values of a decoupled day are
-objected to. Without any usable temperature the level says so, records
-it, and hands the pair back unchanged.
+correlation is meaningless - fog days would otherwise be flagged.
+
+The correlation also breaks down on days with an air mass change: a warm
+front with rain lifts temperature and humidity together, cold advection
+drops both. On healthy MeteoSwiss stations the plain daily test objects
+to 5 percent of all days, 13 percent in winter. Two rules separate weather
+from a sensor. A day on which more than `max_network_frac` of the judged
+stations (and at least two) look decoupled is a weather day and is judged
+at no station; it is listed in `days_unjudged`. And a station is objected
+to only after `min_consecutive_days` judged days in a row: a front lasts a
+day, a dead element lasts weeks. A single station without a network can
+only use the second rule. The verdict is per day: all valid humidity values
+of an objected day are removed. Without any usable temperature the level
+says so, records it, and hands the pair back unchanged.
 }
 \examples{
 \dontrun{

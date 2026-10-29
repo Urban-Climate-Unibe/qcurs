@@ -29,8 +29,9 @@ rh_fixture <- function() {
   RH[fog, 3] <- 80 + rnorm(length(fog), 0, 0.5)
   # E5: stuck block at S4 (60.0 for 40 steps, well below saturation)
   RH[2000:2039, 4] <- 60.0
-  # E6: decoupled day 15 at S2 (constant-ish, uncorrelated with its T)
-  dec <- which(day == as.Date("2025-06-15"))
+  # E6: decoupled days 14-16 at S2 (constant-ish, uncorrelated with its T);
+  # three days, because a single day is a front, not a sensor (RH5 needs two)
+  dec <- which(day >= as.Date("2025-06-14") & day <= as.Date("2025-06-16"))
   RH[dec, 2] <- 55 + rnorm(length(dec), 0, 1.5)
   # E7: dewpoint offset at S1, day 18, midday: a DRY bias of -30 percentage
   # points. A wet bias saturates against the 100 percent ceiling and barely
@@ -107,6 +108,33 @@ test_that("RH5 and RH7 accept the temperature chain result and refuse misalignme
   r7c <- RH_QC_7_dewpoint_consistency(f$rh, metadata = f$md, verbose = FALSE)
   expect_true(r7c$qc_info$rh7_dewpoint_consistency$skipped)
   expect_identical(zoo::coredata(r7c$qc_data), zoo::coredata(f$rh))
+})
+
+test_that("RH5 tells a front from a sensor: network-wide days and single days are not objected to", {
+  f <- rh_fixture()
+  RH <- zoo::coredata(f$rh); day <- as.Date(zoo::index(f$rh))
+  # a front on day 10: every station looks decoupled at once
+  front <- which(day == as.Date("2025-06-10"))
+  RH[front, ] <- 60 + matrix(rnorm(length(front) * 4, 0, 1.5), ncol = 4)
+  # a single decoupled day at S3, no neighbour affected
+  lone <- which(day == as.Date("2025-06-12"))
+  RH[lone, 3] <- 55 + rnorm(length(lone), 0, 1.5)
+  rh <- xts::xts(RH, order.by = zoo::index(f$rh))
+  r <- RH_QC_5_decoupling(rh, temperature = f$tt, verbose = FALSE)
+  FLG <- zoo::coredata(r$qc_data_flagged)
+  expect_true(all(FLG[front, ] == 0))                        # weather day: nobody judged
+  expect_equal(r$qc_info$rh5_decoupling$days_unjudged, "2025-06-10")
+  expect_true(all(FLG[lone, 3] == 0))                        # one day alone: not enough
+  expect_gte(mean(FLG[f$dec, 2] == 5), 0.95)                 # three days alone: objected to
+  # the coverage count excludes the weather day
+  expect_equal(unname(r$qc_info$rh5_decoupling$n_judged_by_station["S3"]) %% 144, 0)
+  # both rules off: the plain daily test objects to the front and the single day
+  r0 <- RH_QC_5_decoupling(rh, temperature = f$tt, min_consecutive_days = 1,
+                           max_network_frac = 1, verbose = FALSE)
+  F0 <- zoo::coredata(r0$qc_data_flagged)
+  expect_true(all(F0[front, ] == 5))
+  expect_true(all(F0[lone, 3] == 5))
+  expect_length(r0$qc_info$rh5_decoupling$days_unjudged, 0)
 })
 
 test_that("RH1 inherits only where time stamp AND logger match, and skips otherwise", {

@@ -294,7 +294,9 @@ rh_res <- RH_QC_4_stuck_values(rh_res,
 rh_res <- RH_QC_5_decoupling(rh_res, temperature = t_res,
                              decouple_r = -0.3,
                              decouple_trange = 3,
-                             decouple_min_n = 60)
+                             decouple_min_n = 60,
+                             min_consecutive_days = 2,   # a front lasts a day, a dead element weeks
+                             max_network_frac = 0.25)    # more than this share at once = weather, day not judged
 ```
 
 ```{r rh6, eval = run_humidity}
@@ -331,6 +333,7 @@ xtabs(judged_pct ~ station + level, rh_sum)
 # which temperature levels the humidity inherited from (the RH code is always 1)
 rh_res$qc_info$rh1_inherit_temperature$n_flagged_by_t_code
 rh_res$qc_info$rh5_decoupling$skipped_stations
+rh_res$qc_info$rh5_decoupling$days_unjudged
 rh_res$qc_info$rh7_dewpoint_consistency$never_evaluated
 ```
 

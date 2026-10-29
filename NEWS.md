@@ -1,3 +1,26 @@
+# qcurs 0.3.1 (2026-10-29)
+
+## Method
+
+* `RH_QC_5_decoupling()` separates weather from a sensor. The daily T-RH
+  correlation also breaks down on days with an air mass change (warm front
+  with rain, cold advection); on healthy MeteoSwiss stations the plain daily
+  test objected to 5 percent of all days, 13 percent in winter, and on a
+  36-station network 90 percent of its objections fell on 13 days with 3 to
+  30 stations at once. Two new rules, both after the pattern of `T_QC_8`:
+  `max_network_frac` (default 0.25) - a day on which more than that share of
+  the judged stations (and at least two) look decoupled is a weather day and
+  is judged at no station, listed in `days_unjudged`; `min_consecutive_days`
+  (default 2) - a station is objected to only after that many judged days in
+  a row. `min_consecutive_days = 1, max_network_frac = 1` gives the 0.3.0
+  behaviour. Temperature flags are unchanged.
+
+## Structure
+
+* The 0.2.0 humidity levels and their Rd files were still in `R/` and `man/`
+  and compiled into the namespace (`RH_QC_5_stuck_values` twice). Moved to
+  `archiv/`, excluded from the build; `load_packages.R` archived too.
+
 # qcurs 0.3.0 (2026-09-29)
 
 Review of the whole temperature and humidity chain. Flags and cleaned data on

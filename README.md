@@ -25,7 +25,7 @@ under GitHub > Settings > Developer settings > Personal access tokens (scope
 From a downloaded tarball or zip:
 
 ```r
-remotes::install_local("qcurs_0.3.0.tar.gz")
+remotes::install_local("qcurs_0.3.1.tar.gz")
 ```
 
 Needs `xts`, `zoo`, `geosphere`; `remotes` installs them.
@@ -149,7 +149,8 @@ i6$never_evaluated        # those stations by name
 
 The other refusals by name: `t5_climatic_outliers$refused` (station-months),
 `t7_spatiotemporal_consistency$skipped` (stations), `t8_diurnal_range$days_unjudged`,
-`rh1_inherit_temperature$loggers_unmatched`, `rh5_decoupling$skipped_stations`,
+`rh1_inherit_temperature$loggers_unmatched`, `rh5_decoupling$skipped_stations`
+and `$days_unjudged`,
 `rh7_dewpoint_consistency$never_evaluated`. A level that could not run at all
 (no metadata, no temperature, too few stations) leaves `skipped = TRUE` and a
 `reason`.
@@ -184,7 +185,7 @@ data. If you publish an interpolated series, say so and publish the codes.
 | RH2 | outside the physical range | 0-105 % |
 | RH3 | as T3 | 20 %, ±3 steps |
 | RH4 | as T4, except when the window median is ≥ 95 % | 6 h, sd 0.1 |
-| RH5 | daily T-RH correlation ≥ -0.3 on days with ≥ 3 K amplitude | ≥ 60 pairs/day |
+| RH5 | daily T-RH correlation ≥ -0.3 on days with ≥ 3 K amplitude, ≥ 2 judged days in a row; a day on which > 25 % of the stations look decoupled is weather and is not judged | ≥ 60 pairs/day |
 | RH6 | below 90 % while the network median is ≥ 95 % | 30-day segments, ≥ 12 hits |
 | RH7 | as T6, on the dewpoint | same as T6 |
 | RH8 | as T9 | |
