@@ -309,6 +309,7 @@ rh_res <- RH_QC_4_stuck_values(rh_res,
                                window_size = "6 hours",                               # <-
                                sd_tol = 0.1,
                                sat_max = 95,          # constant at saturation is not a fault
+                               sat_quantile = 0.9,    # ... nor constant at the sensor's own ceiling
                                min_valid_frac = 0.5)
 ```
 
@@ -323,7 +324,9 @@ rh_res <- RH_QC_5_decoupling(rh_res, temperature = t_res,
 ```
 
 ```{r rh6, eval = run_humidity}
-# a drifter stays below station_max while the network median sits above network_min
+# a drifter stays below station_max while the network median sits above network_min;
+# a network whose sensors never reach network_min makes the level skip itself -
+# rh_res$qc_info$rh4_stuck_values$sat_ceiling shows what they do reach
 rh_res <- RH_QC_6_saturation_drift(rh_res,
                                    network_min = 95,
                                    station_max = 90,
@@ -335,7 +338,7 @@ rh_res <- RH_QC_6_saturation_drift(rh_res,
 ```{r rh7, eval = run_humidity}
 rh_res <- RH_QC_7_dewpoint_consistency(rh_res, temperature = t_res, metadata = md,
                                        k_sigma = 6,
-                                       abs_floor = 3,
+                                       abs_floor = 4,             # K; one more than T6, sensors disagree by 2-3 K at saturation
                                        radius_m = 3000,
                                        k_neighbours = 5,
                                        min_neighbours = 2,
@@ -357,6 +360,8 @@ xtabs(judged_pct ~ station + level, rh_sum)
 rh_res$qc_info$rh1_inherit_temperature$n_flagged_by_t_code
 rh_res$qc_info$rh5_decoupling$skipped_stations
 rh_res$qc_info$rh5_decoupling$days_unjudged
+rh_res$qc_info$rh4_stuck_values$sat_ceiling          # where each sensor saturates
+rh_res$qc_info$rh6_saturation_drift$n_saturated_steps # 0 = the network never saturated, level skipped
 rh_res$qc_info$rh7_dewpoint_consistency$never_evaluated
 ```
 

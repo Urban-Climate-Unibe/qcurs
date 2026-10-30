@@ -9,6 +9,7 @@ RH_QC_4_stuck_values(
   window_size = "6 hours",
   sd_tol = 0.1,
   sat_max = 95,
+  sat_quantile = 0.9,
   min_valid_frac = 0.5,
   verbose = TRUE
 )
@@ -27,13 +28,20 @@ more coarsely.}
 \item{sat_max}{Windows whose median is at or above this are exempt (the
 saturation exception).}
 
+\item{sat_quantile}{Windows whose median reaches this quantile of the
+station's own valid values are exempt as well - the station's ceiling.
+NULL switches the station rule off.}
+
 \item{min_valid_frac}{Minimum fraction of the window that must hold valid
 values for the window to be judged.}
 
 \item{verbose}{Report the tally.}
 }
 \value{
-The chain list with qc_data, qc_data_flagged and qc_info.
+The chain list with qc_data, qc_data_flagged and qc_info. The
+  exemption threshold that applied at each station - the smaller of
+  `sat_max` and the station's quantile - is in
+  `qc_info$rh4_stuck_values$sat_ceiling`.
 }
 \description{
 Same search as temperature level 4, via the shared `qc_find_stuck()`: a
@@ -43,11 +51,25 @@ genuinely stops moving; without this exception the test flags every winter
 systematically. A window is judged only if enough of it holds valid values.
 }
 \details{
+Saturation is not 95 percent for every sensor. The low-cost elements of
+the Thun network stand at 73 to 90 percent - each at its own ceiling -
+while MeteoSwiss Thun reads 99, and in a dew night a forest station sits
+flat at 85 for ten hours: the sensor at its ceiling, not a stuck sensor.
+So a window is also exempt when its median reaches the station's own
+`sat_quantile` quantile of all its valid values (the 90th: the plateau
+nights ARE the top of the record, and a stricter quantile cuts through
+them); the ceiling that resulted is recorded per station
+(`sat_ceiling`). A sensor stuck at ONE
+value for the whole record has that value as its ceiling and escapes
+here; level 5 catches it, because such a sensor no longer follows its own
+temperature. `sat_quantile = NULL` leaves only the fixed `sat_max`.
+
 The window is also the detection delay (see `T_QC_4_stuck_values()`).
 }
 \examples{
 \dontrun{
 res <- RH_QC_4_stuck_values(res, window_size = "6 hours")
+res$qc_info$rh4_stuck_values$sat_ceiling   # where each sensor saturates
 }
 
 }

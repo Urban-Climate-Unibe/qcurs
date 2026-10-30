@@ -1,3 +1,29 @@
+# qcurs 0.4.1 (2026-10-30)
+
+## Method
+
+* Humidity levels checked against two summers of the Thun network with
+  MeteoSwiss Thun as the reference. The sensors read dry at high humidity:
+  where MeteoSwiss stands at 99 percent they stand at 73 to 90, each at its
+  own ceiling, the devices installed in July 2026 five to eight points above
+  the old ones. Three consequences for the chain:
+* `RH_QC_4_stuck_values()`: the saturation exception now also applies at the
+  station's own ceiling (`sat_quantile`, the 90th percentile of its valid
+  values; the threshold used is recorded per station as `sat_ceiling`).
+  Before, 95 percent of the 353 stuck flags of 2025 sat on dew nights at the
+  forest stations - the sensor flat at 85 while MeteoSwiss read 100. A sensor
+  stuck at one value for the whole record has that value as its ceiling and
+  is left to level 5.
+* `RH_QC_6_saturation_drift()` skips itself and says so when the network
+  median never reaches `network_min`, instead of reporting a clean run with
+  nothing judged; `n_saturated_steps` and `network_max` are in the record.
+* `RH_QC_7_dewpoint_consistency()`: floor 4 K instead of 3. Healthy low-cost
+  sensors differ by 2 to 3 K of dewpoint at saturation, and the 3 K floor
+  objected to the wettest sensor on humid nights and the driest two on hot
+  afternoons - the ones MeteoSwiss agreed with (97 of 116 flags in 2025).
+  The one real fault, a sensor at 70 to 92 percent on dry August days, is
+  still found. Temperature level 6 keeps its 3 K.
+
 # qcurs 0.4.0 (2026-10-30)
 
 ## Method

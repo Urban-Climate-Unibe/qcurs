@@ -16,6 +16,14 @@
 #' share of a small network drifts at once, the network no longer counts as
 #' saturated and nothing is caught.
 #'
+#' The level can only judge when the network does reach `network_min`. The
+#' low-cost elements of the Thun network never do - their median tops out at
+#' 85 percent while MeteoSwiss Thun reads 99 - and on such a network the
+#' level skips itself and says so (`skipped`, with the network's maximum in
+#' the record) instead of reporting a clean run. `network_min` and
+#' `station_max` then have to be set to what these sensors reach, with the
+#' station ceilings of level 4 (`sat_ceiling`) as the guide.
+#'
 #' @param input xts of relative humidity, or list from a previous QC level.
 #' @param network_min Network median above which a step counts as saturated.
 #' @param station_max Ceiling the station must stay below, across ALL
@@ -25,7 +33,10 @@
 #' @param window_days Segment length in days.
 #' @param verbose Report the tally.
 #'
-#' @return The chain list with qc_data, qc_data_flagged and qc_info.
+#' @return The chain list with qc_data, qc_data_flagged and qc_info. The
+#'   saturated steps the network offered are counted in
+#'   `qc_info$rh6_saturation_drift$n_saturated_steps`, its maximum median in
+#'   `network_max`.
 #'
 #' @examples
 #' \dontrun{
@@ -79,6 +90,20 @@ RH_QC_6_saturation_drift <- function(input,
   net_med <- apply(X, 1, stats::median, na.rm = TRUE)
   # a step is "saturated" when enough stations report AND their median is at the top
   is_sat <- valid_per_step >= min_stations & !is.na(net_med) & net_med >= network_min
+  # the highest the network median got, with enough stations reporting
+  network_max <- suppressWarnings(max(net_med[valid_per_step >= min_stations], na.rm = TRUE))
+  if (!is.finite(network_max)) network_max <- NA_real_
+  # a network that never saturates gives this level nothing to judge: not an
+  # error but a skip - say why, record it, hand the pair back unchanged
+  if (!any(is_sat)) {
+    reason <- sprintf("the network median never reached network_min = %g (maximum %.1f)", network_min, network_max)
+    if (isTRUE(verbose))
+      message("RH6 saturation drift: ", reason, " - level skipped, continuing with the next level.")
+    input$qc_info$rh6_saturation_drift <- list(n_flagged = 0L, skipped = TRUE, reason = reason,
+                                               n_saturated_steps = 0L, network_max = network_max,
+                                               network_min = network_min, station_max = station_max)
+    return(input)
+  }
   # segment id of every time step (0, 1, 2, ... in window_days blocks)
   seg <- as.integer(floor(as.numeric(difftime(zoo::index(x), zoo::index(x)[1],
                                               units = "days")) / window_days))
@@ -145,8 +170,8 @@ RH_QC_6_saturation_drift <- function(input,
   
   # report so a zero-hit run is visibly a run, not a skip
   if (isTRUE(verbose))
-    message(sprintf("RH6 saturation drift (network >= %g / station < %g, %g-day segments): %d flagged",
-                    network_min, station_max, window_days, n_total))
+    message(sprintf("RH6 saturation drift (network >= %g / station < %g, %g-day segments): %d flagged, %d saturated steps",
+                    network_min, station_max, window_days, n_total, sum(is_sat)))
   
   # write the updated matrices back and append this level under its own name
   input$qc_data                      <- x
@@ -158,6 +183,8 @@ RH_QC_6_saturation_drift <- function(input,
                                              station_max          = station_max,
                                              min_hits             = min_hits,
                                              min_stations         = min_stations,
-                                             window_days          = window_days)
+                                             window_days          = window_days,
+                                             n_saturated_steps    = sum(is_sat),
+                                             network_max          = network_max)
   input
 }

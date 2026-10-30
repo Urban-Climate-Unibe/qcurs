@@ -178,3 +178,42 @@ test_that("RH6 judges per segment and acquits a station that reaches saturation 
   expect_equal(unname(n[["S4"]]), 0)                    # acquitted for the whole segment
   expect_equal(sum(n[c("S1", "S2", "S5")]), 0)
 })
+
+test_that("RH4 exempts a plateau at the sensor's own ceiling, but not a stuck block below it", {
+  set.seed(3)
+  ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = 20 * 144)
+  mins <- as.numeric(format(ti, "%H")) * 60 + as.numeric(format(ti, "%M"))
+  RH <- 70 - 20 * sin(2 * pi * (mins - 540) / 1440) + matrix(rnorm(length(ti) * 4, 0, 1), ncol = 4)
+  colnames(RH) <- paste0("S", 1:4); day <- as.Date(ti)
+  # S1 reads dry at the top: a low-cost element whose ceiling is 82, not 100
+  RH[, 1] <- RH[, 1] * 0.9
+  # a fog day: the healthy stations sit flat at 97, S1 flat at its ceiling
+  fog <- which(day == as.Date("2025-06-08"))
+  RH[fog, ] <- 97 + matrix(rnorm(length(fog) * 4, 0, 0.05), ncol = 4)
+  RH[fog, 1] <- 82 + rnorm(length(fog), 0, 0.05)
+  # and a genuinely stuck block at S1, well below its ceiling
+  RH[1500:1539, 1] <- 60
+  x <- xts::xts(RH, order.by = ti)
+  r <- RH_QC_4_stuck_values(x, verbose = FALSE)
+  FLG <- zoo::coredata(r$qc_data_flagged); i <- r$qc_info$rh4_stuck_values
+  expect_true(all(FLG[fog, ] == 0))                       # the plateau at the own ceiling is saturation
+  expect_true(all(FLG[1500:1539, 1] == 4))                # the stuck block is not
+  expect_lt(i$sat_ceiling[["S1"]], 82); expect_gt(i$sat_ceiling[["S2"]], 87)   # each at its own top
+  # without the station rule the ceiling plateau is a stuck window again
+  r0 <- RH_QC_4_stuck_values(x, sat_quantile = NULL, verbose = FALSE)
+  expect_gte(mean(zoo::coredata(r0$qc_data_flagged)[fog, 1] == 4), 0.9)
+  expect_true(all(r0$qc_info$rh4_stuck_values$sat_ceiling == 95))
+  expect_error(RH_QC_4_stuck_values(x, sat_quantile = 1), "sat_quantile")
+})
+
+test_that("RH6 skips itself audibly when the network never saturates", {
+  set.seed(4)
+  ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = 40 * 144)
+  RH <- matrix(70 + rnorm(length(ti) * 5, 0, 3), ncol = 5, dimnames = list(NULL, paste0("S", 1:5)))
+  expect_message(r <- RH_QC_6_saturation_drift(xts::xts(RH, order.by = ti)), "never reached network_min")
+  i <- r$qc_info$rh6_saturation_drift
+  expect_true(i$skipped); expect_equal(i$n_saturated_steps, 0L); expect_lt(i$network_max, 95)
+  expect_identical(zoo::coredata(r$qc_data), RH)
+  # the level leaves no row in the summary, like every level that could not judge
+  expect_false("rh6_saturation_drift" %in% qc_summary(r)$level)
+})

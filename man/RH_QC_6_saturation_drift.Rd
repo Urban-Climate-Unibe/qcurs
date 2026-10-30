@@ -31,7 +31,10 @@ saturated steps of the segment, to count as a drifter.}
 \item{verbose}{Report the tally.}
 }
 \value{
-The chain list with qc_data, qc_data_flagged and qc_info.
+The chain list with qc_data, qc_data_flagged and qc_info. The
+  saturated steps the network offered are counted in
+  `qc_info$rh6_saturation_drift$n_saturated_steps`, its maximum median in
+  `network_max`.
 }
 \description{
 The classic ageing failure of capacitive elements: fog or continuous rain
@@ -50,6 +53,14 @@ segment; if a drift starts mid-segment, shorten `window_days`. And the
 network median includes the drifting stations themselves, so when a large
 share of a small network drifts at once, the network no longer counts as
 saturated and nothing is caught.
+
+The level can only judge when the network does reach `network_min`. The
+low-cost elements of the Thun network never do - their median tops out at
+85 percent while MeteoSwiss Thun reads 99 - and on such a network the
+level skips itself and says so (`skipped`, with the network's maximum in
+the record) instead of reporting a clean run. `network_min` and
+`station_max` then have to be set to what these sensors reach, with the
+station ceilings of level 4 (`sat_ceiling`) as the guide.
 }
 \examples{
 \dontrun{

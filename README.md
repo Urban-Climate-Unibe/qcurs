@@ -162,8 +162,9 @@ and `$runs_undecided`, `t9_bias_shift$refused` and `$days_unjudged` (with the
 `$baseline` per station and the `$episodes` it objected to),
 `t10_clock_offset$lags` (the best lag of every station-week, NA = not judged)
 and `$episodes`,
-`rh1_inherit_temperature$loggers_unmatched`, `rh5_decoupling$skipped_stations`
-and `$days_unjudged`,
+`rh1_inherit_temperature$loggers_unmatched`, `rh4_stuck_values$sat_ceiling`
+(where each sensor saturates), `rh5_decoupling$skipped_stations`
+and `$days_unjudged`, `rh6_saturation_drift$n_saturated_steps`,
 `rh7_dewpoint_consistency$never_evaluated`. A level that could not run at all
 (no metadata, no temperature, too few stations) leaves `skipped = TRUE` and a
 `reason`.
@@ -218,10 +219,10 @@ data. If you publish an interpolated series, say so and publish the codes.
 | RH1 | inherit temperature flags (not the plain gap fill 50) | |
 | RH2 | outside the physical range | 0-105 % |
 | RH3 | as T3 | 20 %, ±3 steps |
-| RH4 | as T4, except when the window median is ≥ 95 % | 6 h, sd 0.1 |
+| RH4 | as T4, except when the window median is ≥ 95 % or at the station's own 90th percentile (its ceiling: the Thun sensors saturate at 73-90 %) | 6 h, sd 0.1 |
 | RH5 | daily T-RH correlation ≥ -0.3 on days with ≥ 3 K amplitude, ≥ 2 judged days in a row; a day on which > 25 % of the stations look decoupled is weather and is not judged | ≥ 60 pairs/day |
-| RH6 | below 90 % while the network median is ≥ 95 % | 30-day segments, ≥ 12 hits |
-| RH7 | as T6, on the dewpoint | same as T6 |
+| RH6 | below 90 % while the network median is ≥ 95 %; skips itself, audibly, when the network never gets there | 30-day segments, ≥ 12 hits |
+| RH7 | as T6, on the dewpoint | floor 4 K (not 3: healthy low-cost sensors differ by 2-3 K at saturation), otherwise as T6 |
 | RH8 | as T11 | |
 
 Windows are given as text (`"6 hours"`, `"90 mins"`, `"2 days"`) or as a

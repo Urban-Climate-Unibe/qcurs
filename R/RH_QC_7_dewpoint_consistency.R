@@ -15,6 +15,17 @@
 #' with fewer than three matched stations the level says so, records it, and
 #' hands the pair back unchanged so the chain can go on.
 #'
+#' The floor is 4 K here, one more than in temperature level 6. Low-cost
+#' humidity elements do not agree with each other the way temperature
+#' elements do: at saturation the Thun sensors stand between 73 and 90
+#' percent, each at its own ceiling, which is 2 to 3 K of dewpoint between
+#' healthy neighbours. With a 3 K floor the level objected to the wettest
+#' sensor of the network on humid nights and to the driest two on hot
+#' afternoons - the ones MeteoSwiss Thun agreed with - in 97 of 116 cases in
+#' 2025. With 4 K those are gone, and the one real fault of two summers, a
+#' sensor reading 70 to 92 percent on dry August days while network and
+#' MeteoSwiss stood at 40 to 60, is still found.
+#'
 #' @param input xts of relative humidity, or list from a previous QC level.
 #' @param temperature The temperature run: its result list (preferred; its
 #'   CLEANED `qc_data` is taken) or a temperature xts with logger names.
@@ -22,7 +33,8 @@
 #' @param metadata Data frame with columns ID, LAT, LON, Landuse. NULL
 #'   (default) skips the level.
 #' @param k_sigma Multiplier k on the weighted neighbour spread of the dewpoint.
-#' @param abs_floor Absolute floor in Kelvin of dewpoint deviation.
+#' @param abs_floor Absolute floor in Kelvin of dewpoint deviation (4: one
+#'   more than temperature level 6, see above).
 #' @param radius_m Maximum neighbour distance in metres.
 #' @param k_neighbours At most this many nearest COMPATIBLE neighbours.
 #' @param min_neighbours Minimum valid neighbours to judge at all.
@@ -56,7 +68,7 @@ RH_QC_7_dewpoint_consistency <- function(input,
                                          temperature = NULL,
                                          metadata = NULL,
                                          k_sigma = 6,
-                                         abs_floor = 3,
+                                         abs_floor = 4,
                                          radius_m = 3000,
                                          k_neighbours = 5,
                                          min_neighbours = 2,
