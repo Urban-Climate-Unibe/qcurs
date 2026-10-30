@@ -13,6 +13,7 @@ RH_QC_7_dewpoint_consistency(
   radius_m = 3000,
   k_neighbours = 5,
   min_neighbours = 2,
+  max_elev_diff = 100,
   landuse_mode = c("graded", "strict", "none"),
   verbose = TRUE
 )
@@ -36,6 +37,12 @@ NULL (default) skips the level.}
 \item{k_neighbours}{At most this many nearest COMPATIBLE neighbours.}
 
 \item{min_neighbours}{Minimum valid neighbours to judge at all.}
+
+\item{max_elev_diff}{Largest elevation difference in metres between two
+neighbours, applied when the metadata carry an `ELEV` column (metres);
+a site on the slope is otherwise judged against the valley floor and
+loses by lapse rate alone. Without the column the rule is off and the
+record says so (`elevation_used`).}
 
 \item{landuse_mode}{"graded" (paper: same class 1.0, vegetated/forest pairs
 0.4, else 0), "strict" (same class only) or "none" (distance only - for a

@@ -1,3 +1,18 @@
+# qcurs 0.3.7 (2026-10-30)
+
+## Method
+
+* Levels T6 and RH7 take the elevation into account when the metadata carry
+  an `ELEV` column (metres): two stations are neighbours only within
+  `max_elev_diff` (100 m) of each other. On Thun 2025 the published chain
+  and qcurs alike objected to Goldiwil (944 m against a network at 565 m,
+  2.6 K colder on afternoons by lapse rate) - 151 values that were the site,
+  not the sensor. Without the column the rule is off and the record says so
+  (`elevation_used`). The Thun acceptance run otherwise confirmed the chain:
+  the one real fault of 2025 (Thunerallmend stuck, 11 243 values) is found
+  cell for cell as in URS V1, and the four dead or stuck sensors of 2026 are
+  caught completely with the device changes matching to the hour.
+
 # qcurs 0.3.6 (2026-10-30)
 
 ## Structure

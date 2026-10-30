@@ -25,7 +25,7 @@ under GitHub > Settings > Developer settings > Personal access tokens (scope
 From a downloaded tarball or zip:
 
 ```r
-remotes::install_local("qcurs_0.3.6.tar.gz")
+remotes::install_local("qcurs_0.3.7.tar.gz")
 ```
 
 Needs `xts`, `zoo`, `geosphere`; `remotes` installs them.
@@ -42,9 +42,13 @@ time;Log_B1;Log_B2;Log_B3
 ```
 
 **Metadata** (levels 6 and 7 only): a data frame with `ID`, `LAT`, `LON`,
-`Landuse`. Landuse classes as in the URS metadata: `Sealed Areas`,
-`Vegetated Areas`, `Forest`, `Water`. Only stations present in both the data
-and the metadata are used; the rest are reported, not dropped in silence.
+`Landuse`, and ideally `ELEV` (metres). Landuse classes as in the URS
+metadata: `Sealed Areas`, `Vegetated Areas`, `Forest`, `Water`. With `ELEV`,
+level 6 compares a station only with neighbours within `max_elev_diff`
+(100 m) of its own height - a site on the slope is 2-3 K colder by lapse rate
+alone and would otherwise be objected to against the valley floor. Only
+stations present in both the data and the metadata are used; the rest are
+reported, not dropped in silence.
 
 Read the files yourself and check them - `qc_as_xts()` does not read files
 on purpose, a silent CSV misread is the most expensive mistake in this
@@ -197,7 +201,7 @@ data. If you publish an interpolated series, say so and publish the codes.
 | T3 | off the window median AND the past AND the future | 4 K, ±3 steps |
 | T4 | no variation in a window with enough valid values | 6 h, sd 0, ≥ 50 % valid, ≥ 5 values; warns below 6 h at a resolution ≥ 0.05 K |
 | T5 | daily maximum above Q3 + m·IQR or daily minimum below Q1 − m·IQR of the station's pooled month | m 2.5, ≥ 60 days, more than one year |
-| T6 | off the weighted neighbour consensus | max(6σ, 3 K), 3 km, 5 compatible neighbours, ≥ 2 valid; `landuse_mode = "none"` for small networks (coverage at the price of landuse-driven flags: clean Biel 0.75 %) |
+| T6 | off the weighted neighbour consensus | max(6σ, 3 K), 3 km, 5 compatible neighbours, ≥ 2 valid, within 100 m elevation when `ELEV` is given; `landuse_mode = "none"` for small networks (coverage at the price of landuse-driven flags: clean Biel 0.75 %) |
 | T7 | 99 % extreme against all 5 neighbours AND both time neighbours | 2500 m |
 | T8 | diurnal range below 0.4 of the network median of the same day, ≥ 3 days in a row, AND the daily means over the run swing less than 0.4 of the network's (a logger indoors; fog still follows the weather) | ≥ 72 values/day, ≥ 3 stations, network swing ≥ 2 K |
 | T9 | linear fill | gaps ≤ 5 steps |

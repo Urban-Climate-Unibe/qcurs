@@ -23,6 +23,11 @@
 #' @param radius_m Maximum neighbour distance in metres (paper: 3000).
 #' @param k_neighbours At most this many nearest COMPATIBLE neighbours (paper: 5).
 #' @param min_neighbours Minimum valid neighbours to judge at all (paper: 2).
+#' @param max_elev_diff Largest elevation difference in metres between two
+#'   neighbours, applied when the metadata carry an `ELEV` column (metres);
+#'   a site on the slope is otherwise judged against the valley floor and
+#'   loses by lapse rate alone. Without the column the rule is off and the
+#'   record says so (`elevation_used`).
 #' @param landuse_mode "graded" (paper: same class 1.0, vegetated/forest pairs
 #'   0.4, else 0), "strict" (same class only) or "none" (distance only - for a
 #'   small network where the landuse mask leaves hardly any station with the
@@ -51,6 +56,7 @@ T_QC_6_spatial_consistency <- function(input,
                                        radius_m = 3000,
                                        k_neighbours = 5,
                                        min_neighbours = 2,
+                                       max_elev_diff = 100,
                                        landuse_mode = c("graded", "strict", "none"),
                                        verbose = TRUE) {
   #-------------------------------------------------------------------------------
@@ -76,7 +82,7 @@ T_QC_6_spatial_consistency <- function(input,
   #-------------------------------------------------------------------------------
   # the network geometry, once (metadata validation lives in the helper)
 
-  net <- qc_neighbour_weights(metadata, colnames(x), radius_m, k_neighbours, landuse_mode)
+  net <- qc_neighbour_weights(metadata, colnames(x), radius_m, k_neighbours, landuse_mode, max_elev_diff)
   # without at least min_neighbours + 1 stations the condition can never be
   # met: not an error but a skip - say why, record it, hand the pair back
   if (length(net$ids) < min_neighbours + 1) {
@@ -133,6 +139,8 @@ T_QC_6_spatial_consistency <- function(input,
     if (length(never_evaluated))
       message("  never evaluated (insufficient compatible neighbours): ",
               paste(never_evaluated, collapse = ", "))
+    if (!net$elevation_used)
+      message("  no ELEV in the metadata: neighbours not restricted by elevation")
   }
 
   # write the updated matrices back and append this level under its own name
@@ -142,6 +150,8 @@ T_QC_6_spatial_consistency <- function(input,
                                                n_flagged_by_station = n_station,
                                                n_judged_by_station  = n_judged,
                                                sigma_d              = net$sigma_d,
+                                               max_elev_diff        = max_elev_diff,
+                                               elevation_used       = net$elevation_used,
                                                k_sigma              = k_sigma,
                                                abs_floor            = abs_floor,
                                                radius_m             = radius_m,

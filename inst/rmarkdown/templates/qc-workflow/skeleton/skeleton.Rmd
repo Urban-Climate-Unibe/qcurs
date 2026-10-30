@@ -33,7 +33,7 @@ library(xts)
 t_file   <- system.file("extdata", "Biel_summer_2025_raw.csv", package = "qcurs")   # <-
 # humidity: same layout, same logger IDs; NULL if you have none
 rh_file  <- NULL                                                                     # <-
-# metadata: ID, LAT, LON, Landuse
+# metadata: ID, LAT, LON, Landuse, ideally ELEV (metres) - without it level 6 ignores elevation
 md_file  <- system.file("extdata", "metadata.csv", package = "qcurs")                # <-
 # where the results go
 out_dir  <- "qc_output"                                                              # <-
