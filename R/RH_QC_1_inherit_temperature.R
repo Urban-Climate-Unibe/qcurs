@@ -65,11 +65,11 @@ RH_QC_1_inherit_temperature <- function(input,
   # matching needs time stamps AND logger names - a bare matrix has neither
   if (!inherits(tf, "xts") || is.null(colnames(tf)))
     return(skip("temperature_flags must be an xts flag matrix with logger names"))
-  # a flag matrix holds only the codes of the convention (0-9 for the levels,
-  # 50-59 for the interpolation). A temperature VALUE series fails this
+  # a flag matrix holds only the codes of the convention (0-11 for the levels,
+  # 50-61 for the interpolation). A temperature VALUE series fails this
   M_t <- coredata(tf)
-  if (!is.numeric(M_t) || !all(M_t %in% c(0:9, 50:59) | is.na(M_t)))
-    return(skip("temperature_flags holds values outside the flag codes 0-9/50-59 (pass qc_data_flagged, not the values)"))
+  if (!is.numeric(M_t) || !all(M_t %in% c(0:11, 50:61) | is.na(M_t)))
+    return(skip("temperature_flags holds values outside the flag codes 0-11/50-61 (pass qc_data_flagged, not the values)"))
 
   #-------------------------------------------------------------------------------
   # the temperature codes on the humidity grid, by exact time stamp and logger

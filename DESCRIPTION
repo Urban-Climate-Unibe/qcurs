@@ -1,11 +1,11 @@
 Package: qcurs
 Type: Package
 Title: Quality Control for Urban Temperature and Humidity Sensor Networks
-Version: 0.3.7
+Version: 0.4.0
 Authors@R: person("Patrick", "Kallabis", role = c("aut", "cre"),
     email = "patrick.kallabis@unibe.ch")
 Description: Quality-control chains for urban low-cost temperature and relative
-    humidity networks: temperature levels T_QC_1 to T_QC_8, humidity levels
+    humidity networks: temperature levels T_QC_1 to T_QC_10, humidity levels
     RH_QC_1 to RH_QC_7 (inheriting the temperature mask), each with an
     optional linear gap interpolation. Standardised input handling via
     qc_prepare_input(), documented flag codes (0 unobjected, N objected by

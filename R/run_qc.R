@@ -1,6 +1,6 @@
 #' Run the whole temperature QC chain in the fixed order
 #'
-#' Convenience wrapper around levels T_QC_1 to T_QC_8 (and optionally 9). It
+#' Convenience wrapper around levels T_QC_1 to T_QC_10 (and optionally 11). It
 #' exists to prevent the two classic application mistakes: running the levels
 #' in the wrong order, and silently forgetting the spatial levels when the
 #' metadata are at hand. Every level remains individually callable; this
@@ -9,13 +9,13 @@
 #' Without `metadata` the spatial levels 6 and 7 are SKIPPED audibly - useful
 #' for a single isolated station, where they could never run anyway. The
 #' interpolation is off by default, because it alters the data (see
-#' `T_QC_9_interpolate`).
+#' `T_QC_11_interpolate`).
 #'
 #' @param input xts of temperature (or an already started chain list).
 #' @param metadata Data frame with ID, LAT, LON, Landuse for levels 6 and 7,
 #'   or NULL to skip both.
-#' @param interpolate Also run the optional level 9 gap interpolation.
-#' @param params Named list of per-level parameter overrides, keyed t1..t9,
+#' @param interpolate Also run the optional level 11 gap interpolation.
+#' @param params Named list of per-level parameter overrides, keyed t1..t11,
 #'   e.g. `list(t2 = list(summer_min = -10), t6 = list(k_sigma = 5))`. Every
 #'   entry is passed to that level as arguments.
 #' @param verbose Passed to every level.
@@ -40,7 +40,7 @@ run_qc_temperature <- function(input,
                                verbose = TRUE) {
   # the overrides must be a named list keyed by level
   if (!is.list(params)) stop("params must be a named list, e.g. list(t2 = list(summer_min = -10)).")
-  ok_keys <- paste0("t", 1:9)
+  ok_keys <- paste0("t", 1:11)
   if (length(params) && (is.null(names(params)) || !all(names(params) %in% ok_keys)))
     stop(sprintf("params keys must be among %s.", paste(ok_keys, collapse = ", ")))
   
@@ -65,11 +65,13 @@ run_qc_temperature <- function(input,
     message("run_qc_temperature: no metadata supplied - levels 6 (spatial) and 7 (spatiotemporal) skipped.")
   }
   input <- step(T_QC_8_diurnal_range,         "t8")
+  input <- step(T_QC_9_bias_shift,            "t9")
+  input <- step(T_QC_10_clock_offset,         "t10")
   # the interpolation alters the data: only on explicit request
-  if (isTRUE(interpolate)) input <- step(T_QC_9_interpolate, "t9")
+  if (isTRUE(interpolate)) input <- step(T_QC_11_interpolate, "t11")
   
   # record what was skipped, so the result says so even without the console
-  skipped <- c(if (is.null(metadata)) c("t6", "t7"), if (!isTRUE(interpolate)) "t9")
+  skipped <- c(if (is.null(metadata)) c("t6", "t7"), if (!isTRUE(interpolate)) "t11")
   input$qc_info$run_qc_temperature <- list(levels_skipped = if (length(skipped)) skipped else character(0))
   input
 }

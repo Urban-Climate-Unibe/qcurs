@@ -1,4 +1,4 @@
-#' Temperature QC Level 9 (optional): linear gap interpolation
+#' Temperature QC Level 11 (optional): linear gap interpolation
 #'
 #' NOT a quality test - this level ADDS values. It linearly interpolates gaps
 #' of at most `maxgap` steps, via the shared `qc_fill_gaps()`. Keep it
@@ -25,20 +25,20 @@
 #'
 #' @examples
 #' \dontrun{
-#' res <- T_QC_9_interpolate(res, maxgap = 5)   # only on explicit request
+#' res <- T_QC_11_interpolate(res, maxgap = 5)   # only on explicit request
 #' }
 #'
 #' @import xts
 #' @import zoo
 #' @export
-T_QC_9_interpolate <- function(input,
-                               maxgap = 5,
-                               refill_flagged = TRUE,
-                               verbose = TRUE) {
+T_QC_11_interpolate <- function(input,
+                                maxgap = 5,
+                                refill_flagged = TRUE,
+                                verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature", level = "t9_interpolate")
+  input <- qc_prepare_input(input, what = "temperature", level = "t11_interpolate")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -50,7 +50,7 @@ T_QC_9_interpolate <- function(input,
     stop("maxgap must be a positive whole number of steps.")
 
   #-------------------------------------------------------------------------------
-  # Perform T9 - this level creates values, it does not test
+  # Perform T11 - this level creates values, it does not test
 
   # plain numeric matrix of the values (QC removals are NA here)
   X <- coredata(x)
@@ -70,15 +70,15 @@ T_QC_9_interpolate <- function(input,
 
   # honest report of what was ADDED
   if (isTRUE(verbose))
-    message(sprintf("T9 interpolation (maxgap %d): %d gaps filled (code 50), %d QC removals refilled (codes 50+level)",
+    message(sprintf("T11 interpolation (maxgap %d): %d gaps filled (code 50), %d QC removals refilled (codes 50+level)",
                     maxgap, res$n_gap, res$n_ref))
 
   # write the updated matrices back and append this level under its own name
-  input$qc_data                <- x
-  input$qc_data_flagged        <- flg
-  input$qc_info$t9_interpolate <- list(n_gap_filled   = res$n_gap,
-                                     n_refilled     = res$n_ref,
-                                     maxgap         = maxgap,
-                                     refill_flagged = refill_flagged)
+  input$qc_data                 <- x
+  input$qc_data_flagged         <- flg
+  input$qc_info$t11_interpolate <- list(n_gap_filled   = res$n_gap,
+                                        n_refilled     = res$n_ref,
+                                        maxgap         = maxgap,
+                                        refill_flagged = refill_flagged)
   input
 }

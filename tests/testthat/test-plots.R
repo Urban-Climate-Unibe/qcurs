@@ -6,7 +6,7 @@ test_that("the plot functions draw the Biel result and return their tables", {
   grDevices::pdf(NULL); on.exit(grDevices::dev.off())
   tl <- qc_plot_timeline(ch$res)
   expect_named(tl, c("day", "level", "n"))
-  expect_equal(sum(tl$n), sum(zoo::coredata(ch$res$qc_data_flagged) %in% c(1:9, 51:59)))
+  expect_equal(sum(tl$n), sum(zoo::coredata(ch$res$qc_data_flagged) %in% c(1:10, 51:60)))
   tl1 <- qc_plot_timeline(ch$res, station = "Log_B1")
   expect_equal(sum(tl1$n[tl1$level == "t8_diurnal_range"]), 720)
   lv <- qc_plot_levels(ch$res)

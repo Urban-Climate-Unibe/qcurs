@@ -51,7 +51,7 @@ city        <- "BIEL"                                                           
 
 # ---- what to run ------------------------------------------------------------
 run_humidity <- !is.null(rh_file)
-interpolate  <- FALSE   # T9 / RH8 add values; leave off unless you need filled gaps
+interpolate  <- FALSE   # T11 / RH8 add values; leave off unless you need filled gaps
 
 dir.create(out_dir, showWarnings = FALSE)
 ```
@@ -167,11 +167,37 @@ t_res <- T_QC_8_diurnal_range(t_res,
                               min_network_swing = 2)   # K the network must move over the run
 ```
 
-```{r t9, eval = interpolate}
+```{r t9}
+# a sensor that started reading off: the daily-mean anomaly against the
+# other stations departs from its baseline for days on end. Finds the
+# CHANGE - which side is right is for whoever knows the station
+t_res <- T_QC_9_bias_shift(t_res,
+                           bias_tol = 1.5,             # K off the baseline
+                           min_consecutive_days = 5,
+                           ref_days = 30,              # judged days that form the baseline
+                           min_obs_per_day = 72,
+                           min_stations = 3,
+                           max_network_frac = 0.25)    # more than that off together = weather
+```
+
+```{r t10}
+# a clock an hour or more off: the station lines up with the others only
+# when shifted. Site lags (forest, lake) stay below the hour
+t_res <- T_QC_10_clock_offset(t_res,
+                              window_days = 7,
+                              max_lag = 12,               # steps searched either way
+                              min_lag = 6,                # steps = one hour at 10-minute data
+                              min_consecutive_windows = 2,
+                              min_valid_frac = 0.5,
+                              min_cor = 0.7,
+                              min_stations = 3)
+```
+
+```{r t11, eval = interpolate}
 # ADDS values. Codes 50 (plain gap) and 50 + level (removed, then refilled)
-t_res <- T_QC_9_interpolate(t_res,
-                            maxgap = 5,
-                            refill_flagged = TRUE)
+t_res <- T_QC_11_interpolate(t_res,
+                             maxgap = 5,
+                             refill_flagged = TRUE)
 ```
 
 ## 4. What came out
@@ -196,6 +222,17 @@ t_res$qc_info$t6_spatial_consistency$never_evaluated
 t_res$qc_info$t7_spatiotemporal_consistency$skipped
 t_res$qc_info$t8_diurnal_range$days_unjudged
 t_res$qc_info$t8_diurnal_range$runs_undecided
+t_res$qc_info$t9_bias_shift$refused
+t_res$qc_info$t9_bias_shift$days_unjudged
+```
+
+What levels 9 and 10 saw, objected to or not:
+
+```{r t-episodes}
+t_res$qc_info$t9_bias_shift$baseline       # anomaly of each station against the others, K
+t_res$qc_info$t9_bias_shift$episodes       # the shifts it objected to
+t_res$qc_info$t10_clock_offset$lags        # best lag per station-week, steps (positive = stamps early)
+t_res$qc_info$t10_clock_offset$episodes    # the clock offsets it objected to
 ```
 
 When and where the chain objected - flags per day, per level and station,

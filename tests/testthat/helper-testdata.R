@@ -49,7 +49,9 @@ biel_chain <- function() {
     res <- T_QC_6_spatial_consistency(res, metadata = md, verbose = FALSE)
     res <- T_QC_7_spatiotemporal_consistency(res, metadata = md, verbose = FALSE)
     res <- T_QC_8_diurnal_range(res, verbose = FALSE)
-    res <- T_QC_9_interpolate(res, verbose = FALSE)
+    res <- T_QC_9_bias_shift(res, verbose = FALSE)
+    res <- T_QC_10_clock_offset(res, verbose = FALSE)
+    res <- T_QC_11_interpolate(res, verbose = FALSE)
     .chain_cache$x <- x
     .chain_cache$res <- res
   }

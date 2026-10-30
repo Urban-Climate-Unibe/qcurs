@@ -74,11 +74,12 @@ test_that("qc_summary lists every level that judged, with flags that match the r
   ch <- biel_chain()
   s  <- qc_summary(ch$res)
   expect_named(s, c("level", "station", "flagged", "judged", "judged_pct"))
-  # levels 1-8 x 7 stations; the interpolation (9) adds values and has no row
-  expect_equal(nrow(s), 8 * 7)
-  expect_false("t9_interpolate" %in% s$level)
-  expect_equal(unique(s$level), paste0("t", 1:8, "_", c("gross_error", "out_of_range", "time_consistency",
-               "stuck_values", "climatic_outliers", "spatial_consistency", "spatiotemporal_consistency", "diurnal_range")))
+  # levels 1-10 x 7 stations; the interpolation (11) adds values and has no row
+  expect_equal(nrow(s), 10 * 7)
+  expect_false("t11_interpolate" %in% s$level)
+  expect_equal(unique(s$level), paste0("t", 1:10, "_", c("gross_error", "out_of_range", "time_consistency",
+               "stuck_values", "climatic_outliers", "spatial_consistency", "spatiotemporal_consistency", "diurnal_range",
+               "bias_shift", "clock_offset")))
   # the per-level sums are the levels' own tallies
   for (k in unique(s$level)) expect_equal(sum(s$flagged[s$level == k]), ch$res$qc_info[[k]]$n_flagged)
   # judged never exceeds the observed values, and the share is a percentage

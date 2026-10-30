@@ -28,8 +28,10 @@ test_that("run_qc_temperature equals the manual chain and records skips", {
   r_man  <- T_QC_6_spatial_consistency(r_man, metadata = f$md, verbose = FALSE)
   r_man  <- T_QC_7_spatiotemporal_consistency(r_man, metadata = f$md, verbose = FALSE)
   r_man  <- T_QC_8_diurnal_range(r_man, verbose = FALSE)
+  r_man  <- T_QC_9_bias_shift(r_man, verbose = FALSE)
+  r_man  <- T_QC_10_clock_offset(r_man, verbose = FALSE)
   expect_identical(zoo::coredata(r_auto$qc_data_flagged), zoo::coredata(r_man$qc_data_flagged))
-  expect_identical(r_auto$qc_info$run_qc_temperature$levels_skipped, "t9")
+  expect_identical(r_auto$qc_info$run_qc_temperature$levels_skipped, "t11")
   # without metadata the spatial levels are skipped and say so in the record
   r_no <- run_qc_temperature(f$tt, verbose = FALSE)
   expect_true(all(c("t6", "t7") %in% r_no$qc_info$run_qc_temperature$levels_skipped))

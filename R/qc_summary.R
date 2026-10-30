@@ -31,7 +31,7 @@ qc_summary <- function(res, chain = NULL) {
   if (is.null(chain)) chain <- if (!is.null(res$qc_info$dataset_humidity)) "rh" else "t"
   chain <- match.arg(chain, c("t", "rh"))
   # the level records of that chain, in the order they ran
-  keys <- grep(paste0("^", chain, "[0-9]_"), names(res$qc_info), value = TRUE)
+  keys <- grep(paste0("^", chain, "[0-9]+_"), names(res$qc_info), value = TRUE)
   rows <- lapply(keys, function(k) {
     r <- res$qc_info[[k]]
     # skipped levels and the interpolation have no per-station record

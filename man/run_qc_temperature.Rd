@@ -18,9 +18,9 @@ run_qc_temperature(
 \item{metadata}{Data frame with ID, LAT, LON, Landuse for levels 6 and 7,
 or NULL to skip both.}
 
-\item{interpolate}{Also run the optional level 9 gap interpolation.}
+\item{interpolate}{Also run the optional level 11 gap interpolation.}
 
-\item{params}{Named list of per-level parameter overrides, keyed t1..t9,
+\item{params}{Named list of per-level parameter overrides, keyed t1..t11,
 e.g. `list(t2 = list(summer_min = -10), t6 = list(k_sigma = 5))`. Every
 entry is passed to that level as arguments.}
 
@@ -31,7 +31,7 @@ The chain list with qc_data, qc_data_flagged and qc_info; skipped
   levels are listed in `qc_info$run_qc_temperature$levels_skipped`.
 }
 \description{
-Convenience wrapper around levels T_QC_1 to T_QC_8 (and optionally 9). It
+Convenience wrapper around levels T_QC_1 to T_QC_10 (and optionally 11). It
 exists to prevent the two classic application mistakes: running the levels
 in the wrong order, and silently forgetting the spatial levels when the
 metadata are at hand. Every level remains individually callable; this
@@ -41,7 +41,7 @@ function adds nothing the manual chain does not have.
 Without `metadata` the spatial levels 6 and 7 are SKIPPED audibly - useful
 for a single isolated station, where they could never run anyway. The
 interpolation is off by default, because it alters the data (see
-`T_QC_9_interpolate`).
+`T_QC_11_interpolate`).
 }
 \examples{
 \dontrun{

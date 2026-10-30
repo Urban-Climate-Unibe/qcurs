@@ -15,11 +15,11 @@ test_that("level 6 names the stations it could never evaluate", {
   expect_true(all(c("Log_B1", "Log_B7") %in% i6$never_evaluated))
 })
 
-test_that("level 9 reports what it added and never bridges a long block", {
+test_that("level 11 reports what it added and never bridges a long block", {
   ch  <- biel_chain()
-  i9  <- ch$res$qc_info$t9_interpolate
+  i11 <- ch$res$qc_info$t11_interpolate
   FLG <- zoo::coredata(ch$res$qc_data_flagged)
-  expect_gt(i9$n_gap_filled, 0)
-  expect_equal(sum(FLG == 50, na.rm = TRUE), i9$n_gap_filled)
+  expect_gt(i11$n_gap_filled, 0)
+  expect_equal(sum(FLG == 50, na.rm = TRUE), i11$n_gap_filled)
   expect_false(any(FLG[planted_cells("E4", ch$res$qc_data_flagged)] == 54))
 })

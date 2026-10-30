@@ -56,7 +56,7 @@ RH_QC_8_interpolate <- function(input,
   X <- coredata(x)
   # plain numeric matrix of the accumulated flags
   previous_flag <- coredata(flg)
-  # the filling itself lives in qc_fill_gaps(), shared with T_QC_9_interpolate
+  # the filling itself lives in qc_fill_gaps(), shared with T_QC_11_interpolate
   res <- qc_fill_gaps(X, previous_flag, maxgap, refill_flagged)
 
   # write the matrices back into the xts shells, keeping index and column names

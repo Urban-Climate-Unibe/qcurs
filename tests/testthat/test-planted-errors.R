@@ -4,7 +4,7 @@ test_that("every planted error reaches its intended detector", {
   flg <- ch$res$qc_data_flagged
 
   # Codes 51/52/53 = the level's own code plus the interpolation base (50):
-  # T_QC_9 refills the single-value gaps these levels left behind.
+  # T_QC_11 refills the single-value gaps these levels left behind.
   expect_true(all(FLG[planted_cells("E1", flg)] == 51))   # fault code -45
   expect_true(all(FLG[planted_cells("E2", flg)] == 52))   # 55 degC in summer
   expect_true(all(FLG[planted_cells("E3", flg)] == 53))   # isolated +15 K spike

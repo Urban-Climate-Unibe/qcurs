@@ -1,3 +1,36 @@
+# qcurs 0.4.0 (2026-10-30)
+
+## Method
+
+* Two new temperature levels for the faults the single-value tests cannot
+  see. `T_QC_9_bias_shift()` (code 9): the daily-mean anomaly of a station
+  against the median of the other stations, smoothed over five days, is
+  compared with its baseline from the first 30 judged days; a departure of
+  more than 1.5 K for five judged days in a row is objected to, and a day on
+  which more than a quarter of the stations depart is weather and not
+  judged. It finds the change, not an offset from day one; the `episodes`
+  table (station, from, to, days, shift) says where. On two summers of Thun
+  no healthy station departed by more than 1.15 K; a planted +2 K was found
+  with gaps at the threshold, a planted +3 K to 99 percent.
+  `T_QC_10_clock_offset()` (code 10): per station and week the lag at which
+  the station correlates best with the median of the other stations; a lag
+  that rounds to an hour or more, with the same sign over two weeks, is
+  objected to, and the `episodes` table gives the lag in minutes. Forest and
+  lake sites run 20 to 55 minutes behind the network and the open reference
+  site up to 30 minutes ahead, in both summers, which is why the threshold
+  is an hour and not the 30 minutes first planned; a planted hour was found
+  in every full week. Both levels need no metadata.
+
+## Structure
+
+* BREAKING: the interpolation is now the last level, `T_QC_11_interpolate()`
+  with the record `t11_interpolate` and the runner key `t11`; the file
+  `T_QC_9_interpolate.R` was renamed. Flag codes and behaviour are unchanged.
+  Level 1 of the humidity chain accepts the codes 0-11 and 50-61.
+* `qc_row_median()` (internal): row medians by one sort instead of one
+  `median()` per row, so the median of the other stations costs a second,
+  not a minute.
+
 # qcurs 0.3.7 (2026-10-30)
 
 ## Method

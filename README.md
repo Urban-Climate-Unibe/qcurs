@@ -1,7 +1,7 @@
 # qcurs
 
 Quality control for the URS/URBNET low-cost temperature and humidity
-networks. R package, built on `xts`. Temperature runs through nine levels,
+networks. R package, built on `xts`. Temperature runs through eleven levels,
 humidity through eight; every level reads the same list, writes the same
 list, and leaves a record of what it did.
 
@@ -95,7 +95,9 @@ res <- T_QC_5_climatic_outliers(res)
 res <- T_QC_6_spatial_consistency(res, metadata = meta)
 res <- T_QC_7_spatiotemporal_consistency(res, metadata = meta)
 res <- T_QC_8_diurnal_range(res)
-res <- T_QC_9_interpolate(res)   # only if you want filled gaps - see below
+res <- T_QC_9_bias_shift(res)
+res <- T_QC_10_clock_offset(res)
+res <- T_QC_11_interpolate(res)   # only if you want filled gaps - see below
 ```
 
 Every level prints one line with its tally. `verbose = FALSE` switches that off.
@@ -131,6 +133,8 @@ res$qc_info          # one record per level, in the order they ran
 | `6` | off the neighbour consensus | stays below saturation while the network is saturated |
 | `7` | extreme in space and time at once | dewpoint off the neighbour consensus |
 | `8` | logger indoors: range collapsed, daily means off the weather | - |
+| `9` | bias shift: the anomaly against the network departed from its baseline | - |
+| `10` | clock offset: an hour or more ahead of or behind the network | - |
 | `50` | plain gap, filled by the interpolation | same |
 | `50+N` | removed by level N, refilled | same |
 
@@ -139,9 +143,10 @@ The code is the level number and cannot be changed.
 
 ### Reading `qc_info`
 
-`0` is not "checked by everything". Levels 5-8 refuse where the data cannot
+`0` is not "checked by everything". Levels 5-10 refuse where the data cannot
 carry the test: a single-season campaign has no monthly climatology, a
-station without a compatible neighbour in 3 km has no consensus. So every
+station without a compatible neighbour in 3 km has no consensus, a record
+shorter than the baseline of level 9 has no baseline. So every
 level records, per station, what it flagged and what it actually judged:
 
 ```r
@@ -153,7 +158,10 @@ i6$never_evaluated        # those stations by name
 
 The other refusals by name: `t5_climatic_outliers$refused` (station-months),
 `t7_spatiotemporal_consistency$skipped` (stations), `t8_diurnal_range$days_unjudged`
-and `$runs_undecided`,
+and `$runs_undecided`, `t9_bias_shift$refused` and `$days_unjudged` (with the
+`$baseline` per station and the `$episodes` it objected to),
+`t10_clock_offset$lags` (the best lag of every station-week, NA = not judged)
+and `$episodes`,
 `rh1_inherit_temperature$loggers_unmatched`, `rh5_decoupling$skipped_stations`
 and `$days_unjudged`,
 `rh7_dewpoint_consistency$never_evaluated`. A level that could not run at all
@@ -188,7 +196,7 @@ qc_plot_station(res, "Log_B4", raw = x)  # one series with its flags
 
 ### Interpolation
 
-Levels T9 and RH8 ADD values. They are off in the runners (`interpolate = TRUE`
+Levels T11 and RH8 ADD values. They are off in the runners (`interpolate = TRUE`
 turns them on) because the method paper says QC flags and never alters the
 data. If you publish an interpolated series, say so and publish the codes.
 
@@ -204,7 +212,9 @@ data. If you publish an interpolated series, say so and publish the codes.
 | T6 | off the weighted neighbour consensus | max(6σ, 3 K), 3 km, 5 compatible neighbours, ≥ 2 valid, within 100 m elevation when `ELEV` is given; `landuse_mode = "none"` for small networks (coverage at the price of landuse-driven flags: clean Biel 0.75 %) |
 | T7 | 99 % extreme against all 5 neighbours AND both time neighbours | 2500 m |
 | T8 | diurnal range below 0.4 of the network median of the same day, ≥ 3 days in a row, AND the daily means over the run swing less than 0.4 of the network's (a logger indoors; fog still follows the weather) | ≥ 72 values/day, ≥ 3 stations, network swing ≥ 2 K |
-| T9 | linear fill | gaps ≤ 5 steps |
+| T9 | daily-mean anomaly against the median of the other stations, smoothed over 5 days, departs from the baseline of the first 30 judged days by more than 1.5 K for ≥ 5 judged days in a row; a day on which > 25 % of the stations depart is weather and is not judged (finds the CHANGE, not an offset from day one) | 1.5 K, 5 days, 30 baseline days, ≥ 72 values/day, ≥ 3 stations |
+| T10 | best cross-correlation lag against the median of the other stations, per 7-day window, rounds to ≥ 6 steps (one hour) with the same sign in ≥ 2 windows in a row (site lags of up to 55 min at forest and lake sites stay below) | ± 12 steps searched, ≥ 50 % of the window, r ≥ 0.7, ≥ 3 stations |
+| T11 | linear fill | gaps ≤ 5 steps |
 | RH1 | inherit temperature flags (not the plain gap fill 50) | |
 | RH2 | outside the physical range | 0-105 % |
 | RH3 | as T3 | 20 %, ±3 steps |
@@ -212,7 +222,7 @@ data. If you publish an interpolated series, say so and publish the codes.
 | RH5 | daily T-RH correlation ≥ -0.3 on days with ≥ 3 K amplitude, ≥ 2 judged days in a row; a day on which > 25 % of the stations look decoupled is weather and is not judged | ≥ 60 pairs/day |
 | RH6 | below 90 % while the network median is ≥ 95 % | 30-day segments, ≥ 12 hits |
 | RH7 | as T6, on the dewpoint | same as T6 |
-| RH8 | as T9 | |
+| RH8 | as T11 | |
 
 Windows are given as text (`"6 hours"`, `"90 mins"`, `"2 days"`) or as a
 `difftime`; the level converts them with the time step of the data.
@@ -228,11 +238,12 @@ Three kinds of file in `R/`:
 - `qc_*.R` - everything around the tests: `qc_as_xts` and `qc_prepare_input`
   (input), `qc_window_points` (windows), `qc_distance_matrix` and
   `qc_neighbour_weights` (geometry), `qc_match_grid` (temperature onto the
-  humidity grid), `qc_fill_gaps` (interpolation), `qc_summary` and `qc_plot`
+  humidity grid), `qc_row_median` (the median of the other stations, for
+  T9/T10), `qc_fill_gaps` (interpolation), `qc_summary` and `qc_plot`
   (result).
 - `run_qc.R` - the two runners.
 
-Exported: the 17 levels, the 2 runners, `qc_as_xts`, `qc_prepare_input`,
+Exported: the 19 levels, the 2 runners, `qc_as_xts`, `qc_prepare_input`,
 `qc_summary` and the four `qc_plot_*` functions.
 Everything else is internal.
 

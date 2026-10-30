@@ -6,7 +6,7 @@
 #' fixed - `RH_QC_1_inherit_temperature()` recognises a flag matrix by exactly
 #' this code set. Series ends are never extrapolated.
 #'
-#' Used by `T_QC_9_interpolate()` and `RH_QC_8_interpolate()`, so the filling
+#' Used by `T_QC_11_interpolate()` and `RH_QC_8_interpolate()`, so the filling
 #' exists once.
 #'
 #' @param X Numeric value matrix, QC removals already NA.
