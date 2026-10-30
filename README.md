@@ -25,7 +25,7 @@ under GitHub > Settings > Developer settings > Personal access tokens (scope
 From a downloaded tarball or zip:
 
 ```r
-remotes::install_local("qcurs_0.3.5.tar.gz")
+remotes::install_local("qcurs_0.3.6.tar.gz")
 ```
 
 Needs `xts`, `zoo`, `geosphere`; `remotes` installs them.
@@ -172,6 +172,16 @@ xtabs(flagged ~ station + level, s)
 xtabs(judged_pct ~ station + level, s)   # 0 = the level never reached the station
 ```
 
+Four plots, base graphics, each returns the numbers it drew:
+
+```r
+qc_plot_timeline(res)                    # flags per day, one line per level
+qc_plot_levels(res)                      # bars per level, with the share of the judged values
+qc_plot_levels(res, by = "station")      # stacked bars per station, sorted: who is conspicuous
+qc_plot_calendar(res)                    # station x day: weather days are vertical stripes, a broken sensor a horizontal bar
+qc_plot_station(res, "Log_B4", raw = x)  # one series with its flags
+```
+
 ### Interpolation
 
 Levels T9 and RH8 ADD values. They are off in the runners (`interpolate = TRUE`
@@ -214,11 +224,12 @@ Three kinds of file in `R/`:
 - `qc_*.R` - everything around the tests: `qc_as_xts` and `qc_prepare_input`
   (input), `qc_window_points` (windows), `qc_distance_matrix` and
   `qc_neighbour_weights` (geometry), `qc_match_grid` (temperature onto the
-  humidity grid), `qc_fill_gaps` (interpolation), `qc_summary` (result).
+  humidity grid), `qc_fill_gaps` (interpolation), `qc_summary` and `qc_plot`
+  (result).
 - `run_qc.R` - the two runners.
 
 Exported: the 17 levels, the 2 runners, `qc_as_xts`, `qc_prepare_input`,
-`qc_summary`.
+`qc_summary` and the four `qc_plot_*` functions.
 Everything else is internal.
 
 ## Tests

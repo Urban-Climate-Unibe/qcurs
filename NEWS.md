@@ -1,3 +1,16 @@
+# qcurs 0.3.6 (2026-10-30)
+
+## Structure
+
+* Four plot functions, base graphics, one colour per level, each returning
+  the numbers it drew: `qc_plot_timeline()` (flags per day, one line per
+  level), `qc_plot_levels()` (bars per level with the share of the judged
+  values, or stacked bars per station sorted by share), `qc_plot_calendar()`
+  (station-by-day share of objected values: weather days are vertical
+  stripes, a broken sensor a horizontal bar, gaps grey) and
+  `qc_plot_station()` (one series with its flags, raw behind it when
+  given). The template uses them.
+
 # qcurs 0.3.5 (2026-10-29)
 
 ## Method

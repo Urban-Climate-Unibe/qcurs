@@ -198,22 +198,22 @@ t_res$qc_info$t8_diurnal_range$days_unjudged
 t_res$qc_info$t8_diurnal_range$runs_undecided
 ```
 
-One station, raw against cleaned, flagged points coloured by level:
+When and where the chain objected - flags per day, per level and station,
+the station-by-day calendar, and one station close up:
 
-```{r t-plot}
+```{r t-plots, fig.height = 4}
+qc_plot_timeline(t_res)
+qc_plot_levels(t_res)
+qc_plot_levels(t_res, by = "station")
+```
+
+```{r t-calendar, fig.height = 6}
+qc_plot_calendar(t_res)
+```
+
+```{r t-station}
 station <- colnames(t_x)[1]                                                          # <-
-raw <- t_x[, station]; cln <- t_res$qc_data[, station]; f <- t_res$qc_data_flagged[, station]
-plot(index(raw), coredata(raw), type = "l", col = "grey70", xlab = "", ylab = "deg C",
-     main = station)
-lines(index(cln), coredata(cln), col = "black")
-codes <- sort(unique(coredata(f)[coredata(f) > 0 & !is.na(coredata(f))]))
-pal <- c("1" = "red", "2" = "orange", "3" = "purple", "4" = "blue", "5" = "brown",
-         "6" = "darkgreen", "7" = "magenta", "8" = "cyan4")
-for (cc in codes[codes < 50])
-  points(index(raw)[coredata(f) == cc], coredata(raw)[coredata(f) == cc], col = pal[as.character(cc)], pch = 16, cex = 0.6)
-if (length(codes[codes < 50]))
-  legend("topleft", legend = paste("level", codes[codes < 50]), col = pal[as.character(codes[codes < 50])],
-         pch = 16, bty = "n", ncol = 4)
+qc_plot_station(t_res, station, raw = t_x)
 ```
 
 ## 5. Export
@@ -321,6 +321,12 @@ rh_res$qc_info$rh1_inherit_temperature$n_flagged_by_t_code
 rh_res$qc_info$rh5_decoupling$skipped_stations
 rh_res$qc_info$rh5_decoupling$days_unjudged
 rh_res$qc_info$rh7_dewpoint_consistency$never_evaluated
+```
+
+```{r rh-plots, eval = run_humidity, fig.height = 4}
+qc_plot_timeline(rh_res)
+qc_plot_levels(rh_res, by = "station")
+qc_plot_calendar(rh_res)
 ```
 
 ```{r rh-export, eval = run_humidity}
