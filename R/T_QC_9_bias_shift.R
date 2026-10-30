@@ -48,7 +48,7 @@
 #'   them is objected to; also the width of the running median (made odd
 #'   when even).
 #' @param ref_days Judged days at the start of the station's record that
-#'   form its baseline; a station with fewer judged days is refused.
+#'   form its baseline; a station with fewer judged days is never evaluated.
 #' @param min_obs_per_day Valid values a day needs to have a daily mean
 #'   (72 = half of a 10-minute day).
 #' @param min_stations Stations with a daily mean a day needs before it can
@@ -62,7 +62,7 @@
 #' @return The chain list with qc_data, qc_data_flagged and qc_info. The
 #'   baselines are in `qc_info$t9_bias_shift$baseline`, the objected runs in
 #'   `episodes` (one row each: station, from, to, days, shift_K), the weather
-#'   days in `days_unjudged`, the stations without a baseline in `refused`.
+#'   days in `days_unjudged`, the stations without a baseline in `never_evaluated`.
 #'
 #' @examples
 #' \dontrun{
@@ -157,14 +157,14 @@ T_QC_9_bias_shift <- function(input,
   A[!day_ok, ] <- NA_real_
 
   # the baseline per station: the median anomaly of its first ref_days
-  # judged days. Too short a record gets no baseline and is refused
+  # judged days. Too short a record gets no baseline and is never evaluated
   baseline <- stats::setNames(rep(NA_real_, ncol(X)), colnames(X))
-  refused <- character(0)
+  never_evaluated <- character(0)
   for (s in colnames(X)) {
     jd <- which(!is.na(A[, s]))
     if (length(jd) < ref_days) {
       if (length(jd) > 0 || any(!is.na(X[, s])))
-        refused <- c(refused, sprintf("%s(days=%d)", s, length(jd)))
+        never_evaluated <- c(never_evaluated, sprintf("%s(days=%d)", s, length(jd)))
       next
     }
     baseline[s] <- stats::median(A[jd[seq_len(ref_days)], s])
@@ -269,8 +269,8 @@ T_QC_9_bias_shift <- function(input,
     message(sprintf("T9 bias shift (> %g K off the baseline of the first %d days, >= %d days): %d flagged, %d episode(s), %d weather day(s) not judged, %d of %d stations with a baseline",
                     bias_tol, ref_days, min_consecutive_days, n_total, nrow(episodes),
                     length(days_unjudged), sum(!is.na(baseline)), ncol(X)))
-    if (length(refused) > 0)
-      message("  refused (record shorter than ref_days): ", paste(refused, collapse = ", "))
+    if (length(never_evaluated) > 0)
+      message("  never evaluated (record shorter than ref_days): ", paste(never_evaluated, collapse = ", "))
   }
 
   # write the updated matrices back and append this level under its own name
@@ -288,6 +288,6 @@ T_QC_9_bias_shift <- function(input,
                                       baseline             = baseline,
                                       episodes             = episodes,
                                       days_unjudged        = days_unjudged,
-                                      refused              = refused)
+                                      never_evaluated      = never_evaluated)
   input
 }

@@ -7,7 +7,7 @@
 T_QC_4_stuck_values(
   input,
   window_size = "6 hours",
-  na_tolerance_frac = 0.5,
+  min_valid_frac = 0.5,
   min_non_na = 5,
   sd_tol = 0,
   verbose = TRUE
@@ -20,8 +20,8 @@ T_QC_4_stuck_values(
 `as.difftime(6, units = "hours")`) or a string "<n> <unit>" with a unit
 `as.difftime()` understands - secs, mins, hours, days, weeks.}
 
-\item{na_tolerance_frac}{Maximum fraction of NA a window may contain and
-still be judged (paper: up to 50 percent).}
+\item{min_valid_frac}{Minimum fraction of the window that must hold valid
+values for the window to be judged (paper: up to 50 percent NA).}
 
 \item{min_non_na}{Minimum valid values a window needs (paper: 5).}
 

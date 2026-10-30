@@ -43,7 +43,7 @@
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info. Stations
 #'   without a temperature twin are listed in
-#'   `qc_info$rh5_decoupling$skipped_stations`, the weather days in
+#'   `qc_info$rh5_decoupling$never_evaluated`, the weather days in
 #'   `qc_info$rh5_decoupling$days_unjudged`.
 #'
 #' @examples
@@ -130,7 +130,7 @@ RH_QC_5_decoupling <- function(input,
   # per-station coverage: T/RH pairs on days that got a verdict
   n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
   # humidity stations without a temperature twin cannot be tested
-  skipped_stations <- setdiff(colnames(X), tm$loggers)
+  never_evaluated <- setdiff(colnames(X), tm$loggers)
 
   # the daily verdict per station: NA = no verdict, TRUE = looks decoupled
   V <- matrix(NA, length(day_rows), ncol(X), dimnames = list(names(day_rows), colnames(X)))
@@ -227,8 +227,8 @@ RH_QC_5_decoupling <- function(input,
     message(sprintf("RH5 decoupled from own temperature (r >= %g, >= %d days in a row): %d flagged, %d weather day(s) not judged, %d of %d loggers and %d of %d time steps with temperature",
                     decouple_r, min_consecutive_days, n_total, length(days_unjudged),
                     length(tm$loggers), ncol(X), tm$n_time, nrow(X)))
-    if (length(skipped_stations) > 0)
-      message("  skipped (no temperature twin): ", paste(skipped_stations, collapse = ", "))
+    if (length(never_evaluated) > 0)
+      message("  never evaluated (no temperature twin): ", paste(never_evaluated, collapse = ", "))
   }
 
   # write the updated matrices back and append this level under its own name
@@ -244,7 +244,7 @@ RH_QC_5_decoupling <- function(input,
                                        max_network_frac         = max_network_frac,
                                        loggers_with_temperature = tm$loggers,
                                        n_time_with_temperature  = tm$n_time,
-                                       skipped_stations         = skipped_stations,
+                                       never_evaluated          = never_evaluated,
                                        days_unjudged            = days_unjudged)
   input
 }

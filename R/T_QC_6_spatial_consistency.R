@@ -17,7 +17,7 @@
 #'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param metadata Data frame with columns ID, LAT, LON, Landuse. Stations are
-#'   matched to data columns by ID.
+#'   matched to data columns by ID. NULL (default) skips the level.
 #' @param k_sigma Multiplier k on the weighted neighbour spread (paper: 6).
 #' @param abs_floor Absolute floor delta in Kelvin (paper: 3).
 #' @param radius_m Maximum neighbour distance in metres (paper: 3000).
@@ -50,7 +50,7 @@
 #' @import geosphere
 #' @export
 T_QC_6_spatial_consistency <- function(input,
-                                       metadata,
+                                       metadata = NULL,
                                        k_sigma = 6,
                                        abs_floor = 3,
                                        radius_m = 3000,
@@ -76,8 +76,14 @@ T_QC_6_spatial_consistency <- function(input,
   if (!is.numeric(min_neighbours) || min_neighbours < 1) stop("min_neighbours must be at least 1.")
   if (!is.numeric(k_neighbours) || k_neighbours < min_neighbours)
     stop("k_neighbours must be at least min_neighbours.")
-  if (missing(metadata) || is.null(metadata))
-    stop("This level needs the metadata (ID, LAT, LON, Landuse).")
+  # no metadata: not an error but a skip - say why, record it, hand the pair back
+  if (is.null(metadata)) {
+    reason <- "no metadata supplied"
+    if (isTRUE(verbose))
+      message("T6 spatial consistency: ", reason, " - level skipped, continuing with the next level.")
+    input$qc_info$t6_spatial_consistency <- list(n_flagged = 0L, skipped = TRUE, reason = reason)
+    return(input)
+  }
 
   #-------------------------------------------------------------------------------
   # the network geometry, once (metadata validation lives in the helper)

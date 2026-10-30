@@ -6,9 +6,9 @@
 \usage{
 T_QC_7_spatiotemporal_consistency(
   input,
-  metadata,
+  metadata = NULL,
   radius_m = 2500,
-  n_neighbours = 5,
+  k_neighbours = 5,
   threshold = 0.99,
   verbose = TRUE
 )
@@ -16,20 +16,21 @@ T_QC_7_spatiotemporal_consistency(
 \arguments{
 \item{input}{xts of temperature, or list from a previous QC level.}
 
-\item{metadata}{Data frame with columns ID, LAT, LON.}
+\item{metadata}{Data frame with columns ID, LAT, LON. NULL (default) skips
+the level.}
 
 \item{radius_m}{Neighbour search radius in metres (paper: 2500).}
 
-\item{n_neighbours}{Required number of nearby stations (paper: 5).}
+\item{k_neighbours}{Required number of nearby stations (paper: 5).}
 
 \item{threshold}{Quantile for both the spatial and the temporal criteria.}
 
-\item{verbose}{Report the tally and the skipped stations.}
+\item{verbose}{Report the tally and the never-evaluated stations.}
 }
 \value{
 The chain list with qc_data, qc_data_flagged and qc_info. Stations
   without a full neighbourhood, or without a metadata row, are listed in
-  `qc_info$t7_spatiotemporal_consistency$skipped`.
+  `qc_info$t7_spatiotemporal_consistency$never_evaluated`.
 }
 \description{
 Removes values that are simultaneously extreme in space (against ALL nearby

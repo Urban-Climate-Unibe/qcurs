@@ -31,7 +31,7 @@ T_QC_1_gross_error <- function(input,
   flg <- input$qc_data_flagged
 
   #-------------------------------------------------------------------------------
-  # validate the thresholds, because the caller may set them freely
+  # validate the parameters, because the caller may set them freely
 
   # both bounds must be single numbers
   if (!is.numeric(threshold_max) || length(threshold_max) != 1 ||

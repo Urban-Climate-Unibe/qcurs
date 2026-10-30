@@ -63,7 +63,7 @@ test_that("levels 6 and 7 survive metadata that match no station at all", {
   expect_warning(r6 <- T_QC_6_spatial_consistency(x, metadata = md, verbose = FALSE), "No metadata for: A, B, C")
   expect_true(r6$qc_info$t6_spatial_consistency$skipped)
   expect_warning(r7 <- T_QC_7_spatiotemporal_consistency(x, metadata = md, verbose = FALSE), "No metadata for: A, B, C")
-  expect_equal(r7$qc_info$t7_spatiotemporal_consistency$skipped, paste0(c("A", "B", "C"), "(no metadata)"))
+  expect_equal(r7$qc_info$t7_spatiotemporal_consistency$never_evaluated, paste0(c("A", "B", "C"), "(no metadata)"))
   expect_true(all(r7$qc_info$t7_spatiotemporal_consistency$n_judged_by_station == 0))
   # the humidity twin of level 6 skips the same way
   expect_warning(r_rh7 <- RH_QC_7_dewpoint_consistency(x, temperature = x, metadata = md, verbose = FALSE), "No metadata")

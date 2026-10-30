@@ -63,7 +63,7 @@ test_that("T9 refuses a record shorter than its baseline and skips a tiny networ
   r <- T_QC_9_bias_shift(f$x, verbose = FALSE)
   i <- r$qc_info$t9_bias_shift
   expect_equal(i$n_flagged, 0)
-  expect_length(i$refused, 6)
+  expect_length(i$never_evaluated, 6)
   expect_true(all(is.na(i$baseline)))
   expect_true(all(i$n_judged_by_station == 0))
   r2 <- T_QC_9_bias_shift(f$x[, 1:2], verbose = FALSE)

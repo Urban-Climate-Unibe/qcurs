@@ -21,8 +21,8 @@
 #' @param window_size Window length, either a `difftime` (e.g.
 #'   `as.difftime(6, units = "hours")`) or a string "<n> <unit>" with a unit
 #'   `as.difftime()` understands - secs, mins, hours, days, weeks.
-#' @param na_tolerance_frac Maximum fraction of NA a window may contain and
-#'   still be judged (paper: up to 50 percent).
+#' @param min_valid_frac Minimum fraction of the window that must hold valid
+#'   values for the window to be judged (paper: up to 50 percent NA).
 #' @param min_non_na Minimum valid values a window needs (paper: 5).
 #' @param sd_tol Variation at or below this counts as "no variation". 0 keeps
 #'   exact constancy; a small value (e.g. 0.005) also catches a sensor
@@ -41,7 +41,7 @@
 #' @export
 T_QC_4_stuck_values <- function(input,
                                 window_size = "6 hours",
-                                na_tolerance_frac = 0.5,
+                                min_valid_frac = 0.5,
                                 min_non_na = 5,
                                 sd_tol = 0,
                                 verbose = TRUE) {
@@ -55,10 +55,10 @@ T_QC_4_stuck_values <- function(input,
   #-------------------------------------------------------------------------------
   # validate the parameters, because the caller may set them freely
 
-  # the NA budget must be a fraction
-  if (!is.numeric(na_tolerance_frac) || length(na_tolerance_frac) != 1 ||
-      na_tolerance_frac < 0 || na_tolerance_frac >= 1)
-    stop("na_tolerance_frac must be a fraction in [0, 1).")
+  # the population guard must be a usable fraction
+  if (!is.numeric(min_valid_frac) || length(min_valid_frac) != 1 ||
+      min_valid_frac <= 0 || min_valid_frac > 1)
+    stop("min_valid_frac must be a fraction in (0, 1].")
   # the population floor must be at least 2, because sd() of one value is NA anyway
   if (!is.numeric(min_non_na) || length(min_non_na) != 1 || min_non_na < 2)
     stop("min_non_na must be at least 2.")
@@ -76,9 +76,9 @@ T_QC_4_stuck_values <- function(input,
   if (is.finite(resolution) && resolution >= 0.05 && (width - 1) * step_sec < 6 * 3600)
     warning(sprintf("window_size '%s' at a value resolution of %g K: genuine plateaus of that length occur in fog; 6 hours gave no false flags on 0.1 K series.",
                     if (inherits(window_size, "difftime")) format(window_size) else window_size, resolution))
-  # "at most na_tolerance_frac NA" and "at least min_non_na valid" are both
+  # "at least min_valid_frac valid" and "at least min_non_na valid" are both
   # lower bounds on the valid count; the stricter one applies
-  min_valid <- max(min_non_na, width - floor(na_tolerance_frac * width))
+  min_valid <- max(min_non_na, ceiling(min_valid_frac * width))
   # a window that can never hold enough valid values would flag nothing, silently
   if (min_valid > width)
     stop(sprintf("window_size gives only %d points, but min_non_na = %d. Use a longer window or a smaller min_non_na.",
@@ -148,7 +148,7 @@ T_QC_4_stuck_values <- function(input,
                                         width_points         = width,
                                         min_valid            = min_valid,
                                         resolution           = resolution,
-                                        na_tolerance_frac    = na_tolerance_frac,
+                                        min_valid_frac       = min_valid_frac,
                                         min_non_na           = min_non_na,
                                         sd_tol               = sd_tol)
   input

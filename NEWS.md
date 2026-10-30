@@ -1,3 +1,18 @@
+# qcurs 0.4.2 (2026-10-30)
+
+## Structure
+
+* One vocabulary across the levels, nothing else changed. Records: the
+  stations a level could not judge are `never_evaluated` everywhere
+  (T7 `skipped`, RH5 `skipped_stations`, T9 `refused` renamed; `skipped =
+  TRUE` with a `reason` is reserved for a level that did not run at all,
+  `refused` stays for the station-months of T5). Parameters: T7
+  `n_neighbours` is `k_neighbours` like T6 and RH7; T4 `na_tolerance_frac`
+  is `min_valid_frac` like RH4 and T10 (the same guard, stated as the valid
+  share). T6 and T7 take `metadata = NULL` and skip themselves audibly, as
+  RH7 does, instead of stopping with an error. T2 got the section layout of
+  the other levels.
+
 # qcurs 0.4.1 (2026-10-30)
 
 ## Method

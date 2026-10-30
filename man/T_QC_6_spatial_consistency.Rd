@@ -6,7 +6,7 @@
 \usage{
 T_QC_6_spatial_consistency(
   input,
-  metadata,
+  metadata = NULL,
   k_sigma = 6,
   abs_floor = 3,
   radius_m = 3000,
@@ -21,7 +21,7 @@ T_QC_6_spatial_consistency(
 \item{input}{xts of temperature, or list from a previous QC level.}
 
 \item{metadata}{Data frame with columns ID, LAT, LON, Landuse. Stations are
-matched to data columns by ID.}
+matched to data columns by ID. NULL (default) skips the level.}
 
 \item{k_sigma}{Multiplier k on the weighted neighbour spread (paper: 6).}
 

@@ -157,13 +157,13 @@ i6$never_evaluated        # those stations by name
 ```
 
 The other refusals by name: `t5_climatic_outliers$refused` (station-months),
-`t7_spatiotemporal_consistency$skipped` (stations), `t8_diurnal_range$days_unjudged`
-and `$runs_undecided`, `t9_bias_shift$refused` and `$days_unjudged` (with the
+`t7_spatiotemporal_consistency$never_evaluated` (stations), `t8_diurnal_range$days_unjudged`
+and `$runs_undecided`, `t9_bias_shift$never_evaluated` and `$days_unjudged` (with the
 `$baseline` per station and the `$episodes` it objected to),
 `t10_clock_offset$lags` (the best lag of every station-week, NA = not judged)
 and `$episodes`,
 `rh1_inherit_temperature$loggers_unmatched`, `rh4_stuck_values$sat_ceiling`
-(where each sensor saturates), `rh5_decoupling$skipped_stations`
+(where each sensor saturates), `rh5_decoupling$never_evaluated`
 and `$days_unjudged`, `rh6_saturation_drift$n_saturated_steps`,
 `rh7_dewpoint_consistency$never_evaluated`. A level that could not run at all
 (no metadata, no temperature, too few stations) leaves `skipped = TRUE` and a

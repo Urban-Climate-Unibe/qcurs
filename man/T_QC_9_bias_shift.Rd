@@ -26,7 +26,7 @@ them is objected to; also the width of the running median (made odd
 when even).}
 
 \item{ref_days}{Judged days at the start of the station's record that
-form its baseline; a station with fewer judged days is refused.}
+form its baseline; a station with fewer judged days is never evaluated.}
 
 \item{min_obs_per_day}{Valid values a day needs to have a daily mean
 (72 = half of a 10-minute day).}
@@ -45,7 +45,7 @@ shifted stations). 1 switches the rule off.}
 The chain list with qc_data, qc_data_flagged and qc_info. The
   baselines are in `qc_info$t9_bias_shift$baseline`, the objected runs in
   `episodes` (one row each: station, from, to, days, shift_K), the weather
-  days in `days_unjudged`, the stations without a baseline in `refused`.
+  days in `days_unjudged`, the stations without a baseline in `never_evaluated`.
 }
 \description{
 A sensor that reads 2 K too high after a knock, a replaced element with

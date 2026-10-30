@@ -41,7 +41,7 @@ decoupled stations). 1 switches the rule off.}
 \value{
 The chain list with qc_data, qc_data_flagged and qc_info. Stations
   without a temperature twin are listed in
-  `qc_info$rh5_decoupling$skipped_stations`, the weather days in
+  `qc_info$rh5_decoupling$never_evaluated`, the weather days in
   `qc_info$rh5_decoupling$days_unjudged`.
 }
 \description{

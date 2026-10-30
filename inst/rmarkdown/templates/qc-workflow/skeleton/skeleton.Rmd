@@ -123,7 +123,7 @@ t_res <- T_QC_3_time_consistency(t_res,
 # loggers resolving 0.01 K or finer - the level warns otherwise
 t_res <- T_QC_4_stuck_values(t_res,
                              window_size = "6 hours",                                 # <-
-                             na_tolerance_frac = 0.5,
+                             min_valid_frac = 0.5,
                              min_non_na = 5,
                              sd_tol = 0)
 ```
@@ -152,7 +152,7 @@ t_res <- T_QC_6_spatial_consistency(t_res, metadata = md,
 ```{r t7}
 t_res <- T_QC_7_spatiotemporal_consistency(t_res, metadata = md,
                                            radius_m = 2500,
-                                           n_neighbours = 5,
+                                           k_neighbours = 5,
                                            threshold = 0.99)
 ```
 
@@ -219,10 +219,10 @@ Where a level was blind, by name:
 ```{r t-refusals}
 t_res$qc_info$t5_climatic_outliers$refused
 t_res$qc_info$t6_spatial_consistency$never_evaluated
-t_res$qc_info$t7_spatiotemporal_consistency$skipped
+t_res$qc_info$t7_spatiotemporal_consistency$never_evaluated
 t_res$qc_info$t8_diurnal_range$days_unjudged
 t_res$qc_info$t8_diurnal_range$runs_undecided
-t_res$qc_info$t9_bias_shift$refused
+t_res$qc_info$t9_bias_shift$never_evaluated
 t_res$qc_info$t9_bias_shift$days_unjudged
 ```
 
@@ -358,7 +358,7 @@ xtabs(flagged ~ station + level, rh_sum)
 xtabs(judged_pct ~ station + level, rh_sum)
 # which temperature levels the humidity inherited from (the RH code is always 1)
 rh_res$qc_info$rh1_inherit_temperature$n_flagged_by_t_code
-rh_res$qc_info$rh5_decoupling$skipped_stations
+rh_res$qc_info$rh5_decoupling$never_evaluated
 rh_res$qc_info$rh5_decoupling$days_unjudged
 rh_res$qc_info$rh4_stuck_values$sat_ceiling          # where each sensor saturates
 rh_res$qc_info$rh6_saturation_drift$n_saturated_steps # 0 = the network never saturated, level skipped

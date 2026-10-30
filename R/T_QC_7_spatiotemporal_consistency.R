@@ -8,15 +8,16 @@
 #' compared against it, so the result does not depend on the column order.
 #'
 #' @param input xts of temperature, or list from a previous QC level.
-#' @param metadata Data frame with columns ID, LAT, LON.
+#' @param metadata Data frame with columns ID, LAT, LON. NULL (default) skips
+#'   the level.
 #' @param radius_m Neighbour search radius in metres (paper: 2500).
-#' @param n_neighbours Required number of nearby stations (paper: 5).
+#' @param k_neighbours Required number of nearby stations (paper: 5).
 #' @param threshold Quantile for both the spatial and the temporal criteria.
-#' @param verbose Report the tally and the skipped stations.
+#' @param verbose Report the tally and the never-evaluated stations.
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info. Stations
 #'   without a full neighbourhood, or without a metadata row, are listed in
-#'   `qc_info$t7_spatiotemporal_consistency$skipped`.
+#'   `qc_info$t7_spatiotemporal_consistency$never_evaluated`.
 #'
 #' @examples
 #' \dontrun{
@@ -28,9 +29,9 @@
 #' @import geosphere
 #' @export
 T_QC_7_spatiotemporal_consistency <- function(input,
-                                              metadata,
+                                              metadata = NULL,
                                               radius_m = 2500,
-                                              n_neighbours = 5,
+                                              k_neighbours = 5,
                                               threshold = 0.99,
                                               verbose = TRUE) {
   #-------------------------------------------------------------------------------
@@ -47,9 +48,15 @@ T_QC_7_spatiotemporal_consistency <- function(input,
   if (!is.numeric(threshold) || length(threshold) != 1 || threshold <= 0.5 || threshold >= 1)
     stop("threshold must be a probability between 0.5 and 1.")
   if (!is.numeric(radius_m) || radius_m <= 0) stop("radius_m must be a positive distance in metres.")
-  if (!is.numeric(n_neighbours) || n_neighbours < 1) stop("n_neighbours must be at least 1.")
-  # the metadata are required for this level
-  if (missing(metadata) || is.null(metadata)) stop("This level needs the metadata (ID, LAT, LON).")
+  if (!is.numeric(k_neighbours) || k_neighbours < 1) stop("k_neighbours must be at least 1.")
+  # no metadata: not an error but a skip - say why, record it, hand the pair back
+  if (is.null(metadata)) {
+    reason <- "no metadata supplied"
+    if (isTRUE(verbose))
+      message("T7 spatiotemporal consistency: ", reason, " - level skipped, continuing with the next level.")
+    input$qc_info$t7_spatiotemporal_consistency <- list(n_flagged = 0L, skipped = TRUE, reason = reason)
+    return(input)
+  }
   # tolerate tibbles and friends
   md <- as.data.frame(metadata)
   # the three columns this level relies on
@@ -94,7 +101,7 @@ T_QC_7_spatiotemporal_consistency <- function(input,
   # per-station coverage: cells with a full neighbourhood and both time neighbours
   n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
   # stations without a full neighbourhood, so a zero-flag run is not a clean bill
-  skipped <- if (length(missing_md)) paste0(missing_md, "(no metadata)") else character(0)
+  never_evaluated <- if (length(missing_md)) paste0(missing_md, "(no metadata)") else character(0)
 
   # iterate over all target stations that have metadata
   for (s in ids) {
@@ -103,12 +110,12 @@ T_QC_7_spatiotemporal_consistency <- function(input,
     # all neighbours within the radius, nearest first
     nb <- names(sort(d[!is.na(d) & d <= radius_m]))
     # not enough for the "extreme against ALL of them" logic: remember and move on
-    if (length(nb) < n_neighbours) {
-      skipped <- c(skipped, sprintf("%s(%d)", s, length(nb)))
+    if (length(nb) < k_neighbours) {
+      never_evaluated <- c(never_evaluated, sprintf("%s(%d)", s, length(nb)))
       next
     }
     # exactly the required number, the nearest ones
-    nb <- nb[seq_len(n_neighbours)]
+    nb <- nb[seq_len(k_neighbours)]
     # extract data vector of this station, as it entered the level
     v <- X0[, s]
 
@@ -126,7 +133,7 @@ T_QC_7_spatiotemporal_consistency <- function(input,
     n_ex <- rowSums(ex, na.rm = TRUE)
     # spatial criterion: the value exists, the FULL neighbourhood is available,
     # and the value is extreme against ALL of it
-    spatial <- !is.na(v) & n_avail >= n_neighbours & n_ex >= n_avail
+    spatial <- !is.na(v) & n_avail >= k_neighbours & n_ex >= n_avail
 
     # change from the previous step
     d_pre <- v - shift_back(v)
@@ -140,7 +147,7 @@ T_QC_7_spatiotemporal_consistency <- function(input,
     temporal <- !is.na(d_pre) & !is.na(d_nex) & abs(d_pre) > q_pre & abs(d_nex) > q_nex
 
     # judged = both criteria could be evaluated: value, full neighbourhood, both time neighbours
-    n_judged[s] <- sum(!is.na(v) & n_avail >= n_neighbours & !is.na(d_pre) & !is.na(d_nex))
+    n_judged[s] <- sum(!is.na(v) & n_avail >= k_neighbours & !is.na(d_pre) & !is.na(d_nex))
     # extreme in space AND in time: the objection condition
     hit <- spatial & temporal
     # combine the verdict with THIS station's column only
@@ -172,9 +179,9 @@ T_QC_7_spatiotemporal_consistency <- function(input,
   # report so a zero-hit run is visibly a run, not a skip - one summary line, no spam
   if (isTRUE(verbose)) {
     message(sprintf("T7 spatiotemporal (q=%g, %d neighbours <= %g m): %d flagged",
-                    threshold, n_neighbours, radius_m, n_total))
-    if (length(skipped) > 0)
-      message("  skipped (too few neighbours in radius): ", paste(skipped, collapse = ", "))
+                    threshold, k_neighbours, radius_m, n_total))
+    if (length(never_evaluated) > 0)
+      message("  never evaluated (too few neighbours in radius): ", paste(never_evaluated, collapse = ", "))
   }
 
   # write the updated matrices back and append this level under its own name
@@ -184,8 +191,8 @@ T_QC_7_spatiotemporal_consistency <- function(input,
                                                       n_flagged_by_station = n_station,
                                                       n_judged_by_station  = n_judged,
                                                       radius_m             = radius_m,
-                                                      n_neighbours         = n_neighbours,
+                                                      k_neighbours         = k_neighbours,
                                                       threshold            = threshold,
-                                                      skipped              = skipped)
+                                                      never_evaluated      = never_evaluated)
   input
 }

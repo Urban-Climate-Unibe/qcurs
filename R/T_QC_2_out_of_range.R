@@ -38,15 +38,15 @@ T_QC_2_out_of_range <- function(input,
                                   autumn = list(min_val = -19.90, max_val = 40.87)),
                                 verbose = TRUE) {
 
-#-------------------------------------------------------------------------------
-# normalise the input first and perform basic sanity checks
+  #-------------------------------------------------------------------------------
+  # normalise the input first and perform basic sanity checks
 
   input <- qc_prepare_input(input, what = "temperature", level = "t2_out_of_range")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
-#-------------------------------------------------------------------------------
-# validate the thresholds, because the caller may replace them freely
+  #-------------------------------------------------------------------------------
+  # validate the parameters, because the caller may set them freely
 
   seasons <- c("winter", "spring", "summer", "autumn")
   # ... all four seasons must be present
@@ -62,8 +62,8 @@ T_QC_2_out_of_range <- function(input,
       stop(sprintf("season_thresholds$%s: min_val must be below max_val.", s))
   }
 
-#-------------------------------------------------------------------------------
-# assign every time step to its season and build the bound vectors
+  #-------------------------------------------------------------------------------
+  # assign every time step to its season and build the bound vectors
 
   # extract the month number of every time step ...
   mon <- as.numeric(format(zoo::index(x), "%m"))
@@ -76,8 +76,8 @@ T_QC_2_out_of_range <- function(input,
   # upper bound valid at each time step
   hi <- vapply(season, function(s) season_thresholds[[s]]$max_val, numeric(1), USE.NAMES = FALSE)
 
-#-------------------------------------------------------------------------------
-# work on the plain matrices: no xts recycling surprises, one pass over the data
+  #-------------------------------------------------------------------------------
+  # Perform QC Level 2
 
   # plain numeric matrix of the values (time in rows, stations in columns)
   X <- coredata(x)
@@ -112,8 +112,8 @@ T_QC_2_out_of_range <- function(input,
     flg[] <- previous_flag
   }
 
-#-------------------------------------------------------------------------------
-# report and hand the pair on to the next level
+  #-------------------------------------------------------------------------------
+  # report and hand the pair on to the next level
 
   # report so a zero-hit run is visibly a run, not a skip
   if (isTRUE(verbose))
