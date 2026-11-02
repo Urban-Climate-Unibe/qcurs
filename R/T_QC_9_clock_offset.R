@@ -1,4 +1,4 @@
-#' Temperature QC Level 10: clock offset against the network
+#' Temperature QC Level 9: clock offset against the network
 #'
 #' A logger whose clock is wrong - set to the wrong time zone, not adjusted
 #' after a battery change, drifting for a year - delivers correct values
@@ -57,32 +57,32 @@
 #'
 #' @return The chain list with qc_data, qc_data_flagged and qc_info. The best
 #'   lag of every judged station-window, in steps, is in
-#'   `qc_info$t10_clock_offset$lags` (windows in rows, stations in columns,
+#'   `qc_info$t9_clock_offset$lags` (windows in rows, stations in columns,
 #'   NA = not judged), the objected runs in `episodes` (station, from, to,
 #'   windows, lag_min, r).
 #'
 #' @examples
 #' \dontrun{
-#' res <- T_QC_10_clock_offset(res)
-#' res$qc_info$t10_clock_offset$episodes
+#' res <- T_QC_9_clock_offset(res)
+#' res$qc_info$t9_clock_offset$episodes
 #' }
 #'
 #' @import xts
 #' @import zoo
 #' @export
-T_QC_10_clock_offset <- function(input,
-                                 window_days = 7,
-                                 max_lag = 12,
-                                 min_lag = 6,
-                                 min_consecutive_windows = 2,
-                                 min_valid_frac = 0.5,
-                                 min_cor = 0.7,
-                                 min_stations = 3,
-                                 verbose = TRUE) {
+T_QC_9_clock_offset <- function(input,
+                                window_days = 7,
+                                max_lag = 12,
+                                min_lag = 6,
+                                min_consecutive_windows = 2,
+                                min_valid_frac = 0.5,
+                                min_cor = 0.7,
+                                min_stations = 3,
+                                verbose = TRUE) {
   #-------------------------------------------------------------------------------
   # normalise the input first and perform basic sanity checks
 
-  input <- qc_prepare_input(input, what = "temperature", level = "t10_clock_offset")
+  input <- qc_prepare_input(input, what = "temperature", level = "t9_clock_offset")
   x   <- input$qc_data
   flg <- input$qc_data_flagged
 
@@ -119,13 +119,13 @@ T_QC_10_clock_offset <- function(input,
     reason <- "no time step could be determined (single time stamp)"
   if (!is.null(reason)) {
     if (isTRUE(verbose))
-      message("T10 clock offset: ", reason, " - level skipped, continuing with the next level.")
-    input$qc_info$t10_clock_offset <- list(n_flagged = 0L, skipped = TRUE, reason = reason)
+      message("T9 clock offset: ", reason, " - level skipped, continuing with the next level.")
+    input$qc_info$t9_clock_offset <- list(n_flagged = 0L, skipped = TRUE, reason = reason)
     return(input)
   }
 
   #-------------------------------------------------------------------------------
-  # Perform QC Level 10
+  # Perform QC Level 9
 
   # plain numeric matrix of the values (time in rows, stations in columns)
   X <- coredata(x)
@@ -256,8 +256,8 @@ T_QC_10_clock_offset <- function(input,
     if (n_found > 0) {
       # blank the offset windows so later levels never see them
       X[mask, s] <- NA
-      # record this level's code (10 = level 10, fixed by convention)
-      previous_flag[mask, s] <- 10
+      # record this level's code (9 = level 9, fixed by convention)
+      previous_flag[mask, s] <- 9
       # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found
@@ -279,25 +279,25 @@ T_QC_10_clock_offset <- function(input,
 
   # report so a zero-hit run is visibly a run, not a skip
   if (isTRUE(verbose)) {
-    message(sprintf("T10 clock offset (|lag| >= %d steps = %g min, same sign over >= %d windows of %d days): %d flagged, %d episode(s), %d of %d station-windows judged",
+    message(sprintf("T9 clock offset (|lag| >= %d steps = %g min, same sign over >= %d windows of %d days): %d flagged, %d episode(s), %d of %d station-windows judged",
                     min_lag, min_lag * step_sec / 60, min_consecutive_windows, window_days,
                     n_total, nrow(episodes), sum(!is.na(LAG)), length(LAG)))
   }
 
   # write the updated matrices back and append this level under its own name
-  input$qc_data                  <- x
-  input$qc_data_flagged          <- flg
-  input$qc_info$t10_clock_offset <- list(n_flagged               = n_total,
-                                         n_flagged_by_station    = n_station,
-                                         n_judged_by_station     = n_judged,
-                                         window_days             = window_days,
-                                         max_lag                 = max_lag,
-                                         min_lag                 = min_lag,
-                                         min_consecutive_windows = min_consecutive_windows,
-                                         min_valid_frac          = min_valid_frac,
-                                         min_cor                 = min_cor,
-                                         min_stations            = min_stations,
-                                         lags                    = LAG,
-                                         episodes                = episodes)
+  input$qc_data                 <- x
+  input$qc_data_flagged         <- flg
+  input$qc_info$t9_clock_offset <- list(n_flagged               = n_total,
+                                        n_flagged_by_station    = n_station,
+                                        n_judged_by_station     = n_judged,
+                                        window_days             = window_days,
+                                        max_lag                 = max_lag,
+                                        min_lag                 = min_lag,
+                                        min_consecutive_windows = min_consecutive_windows,
+                                        min_valid_frac          = min_valid_frac,
+                                        min_cor                 = min_cor,
+                                        min_stations            = min_stations,
+                                        lags                    = LAG,
+                                        episodes                = episodes)
   input
 }

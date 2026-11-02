@@ -1,3 +1,24 @@
+# qcurs 0.5.0 (2026-11-02)
+
+## Method
+
+* `T_QC_9_bias_shift` removed (archived under `archiv/R_0.4.2`). On
+  Thun-Steffisburg 2026 it objected only to site weather that lasted days -
+  fog in the town while Goldiwil sat in the sun, the cold lake in summer -
+  and never to a sensor; the network rule cannot tell a hill or a lake from
+  a calibration shift when only one or two stations depart. The clock offset
+  is now `T_QC_9_clock_offset` (code 9, refill 59), the interpolation
+  `T_QC_10_interpolate` (record `t10_interpolate`, runner key `t10`).
+
+## Structure
+
+* `levels` in both runners: the levels allowed to run, with the sign
+  convention of R indexing - `levels = -9` runs everything but level 9,
+  `levels = c(1:3, 6)` only those four, names like `"T9"` or `"-T9"` work
+  too. Levels 6 and 7 still need `metadata`, the interpolation still needs
+  `interpolate = TRUE`. The record of the runner carries `levels` and
+  `levels_skipped`.
+
 # qcurs 0.4.2 (2026-10-30)
 
 ## Structure

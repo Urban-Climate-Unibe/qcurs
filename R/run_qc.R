@@ -1,6 +1,6 @@
 #' Run the whole temperature QC chain in the fixed order
 #'
-#' Convenience wrapper around levels T_QC_1 to T_QC_10 (and optionally 11). It
+#' Convenience wrapper around levels T_QC_1 to T_QC_9 (and optionally 10). It
 #' exists to prevent the two classic application mistakes: running the levels
 #' in the wrong order, and silently forgetting the spatial levels when the
 #' metadata are at hand. Every level remains individually callable; this
@@ -9,23 +9,30 @@
 #' Without `metadata` the spatial levels 6 and 7 are SKIPPED audibly - useful
 #' for a single isolated station, where they could never run anyway. The
 #' interpolation is off by default, because it alters the data (see
-#' `T_QC_11_interpolate`).
+#' `T_QC_10_interpolate`). `levels` limits the run to a subset of the levels,
+#' with the sign convention of R indexing.
 #'
 #' @param input xts of temperature (or an already started chain list).
 #' @param metadata Data frame with ID, LAT, LON, Landuse for levels 6 and 7,
 #'   or NULL to skip both.
-#' @param interpolate Also run the optional level 11 gap interpolation.
-#' @param params Named list of per-level parameter overrides, keyed t1..t11,
+#' @param interpolate Also run the optional level 10 gap interpolation.
+#' @param levels The levels allowed to run: numbers or names like `"T3"`,
+#'   positive to select, negative to exclude - `-9` runs everything but
+#'   level 9, `c(1:3, 6)` only those four. Levels 6 and 7 still need
+#'   `metadata`, level 10 still needs `interpolate = TRUE`.
+#' @param params Named list of per-level parameter overrides, keyed t1..t10,
 #'   e.g. `list(t2 = list(summer_min = -10), t6 = list(k_sigma = 5))`. Every
 #'   entry is passed to that level as arguments.
 #' @param verbose Passed to every level.
 #'
-#' @return The chain list with qc_data, qc_data_flagged and qc_info; skipped
-#'   levels are listed in `qc_info$run_qc_temperature$levels_skipped`.
+#' @return The chain list with qc_data, qc_data_flagged and qc_info; the
+#'   levels run and skipped are listed in `qc_info$run_qc_temperature$levels`
+#'   and `$levels_skipped`.
 #'
 #' @examples
 #' \dontrun{
 #' res <- run_qc_temperature(x, metadata = meta)
+#' res <- run_qc_temperature(x, metadata = meta, levels = -9)
 #' res <- run_qc_temperature(x, metadata = meta, interpolate = TRUE,
 #'                           params = list(t2 = list(summer_min = -10)))
 #' }
@@ -36,16 +43,21 @@
 run_qc_temperature <- function(input,
                                metadata = NULL,
                                interpolate = FALSE,
+                               levels = 1:10,
                                params = list(),
                                verbose = TRUE) {
   # the overrides must be a named list keyed by level
   if (!is.list(params)) stop("params must be a named list, e.g. list(t2 = list(summer_min = -10)).")
-  ok_keys <- paste0("t", 1:11)
+  ok_keys <- paste0("t", 1:10)
   if (length(params) && (is.null(names(params)) || !all(names(params) %in% ok_keys)))
     stop(sprintf("params keys must be among %s.", paste(ok_keys, collapse = ", ")))
+  # the levels this run may touch; the rest is left out and recorded as skipped
+  run <- qc_pick_levels(levels, 10, "t")
   
   # one level call: base arguments, overridden by the caller's params entry
   step <- function(fun, key, base = list()) {
+    # a level outside `levels` is left out
+    if (!(as.integer(sub("^t", "", key)) %in% run)) return(input)
     args <- utils::modifyList(c(list(verbose = verbose), base),
                               if (is.null(params[[key]])) list() else params[[key]])
     do.call(fun, c(list(input = input), args))
@@ -61,18 +73,18 @@ run_qc_temperature <- function(input,
   if (!is.null(metadata)) {
     input <- step(T_QC_6_spatial_consistency,        "t6", list(metadata = metadata))
     input <- step(T_QC_7_spatiotemporal_consistency, "t7", list(metadata = metadata))
-  } else if (isTRUE(verbose)) {
+  } else if (isTRUE(verbose) && any(c(6, 7) %in% run)) {
     message("run_qc_temperature: no metadata supplied - levels 6 (spatial) and 7 (spatiotemporal) skipped.")
   }
   input <- step(T_QC_8_diurnal_range,         "t8")
-  input <- step(T_QC_9_bias_shift,            "t9")
-  input <- step(T_QC_10_clock_offset,         "t10")
+  input <- step(T_QC_9_clock_offset,          "t9")
   # the interpolation alters the data: only on explicit request
-  if (isTRUE(interpolate)) input <- step(T_QC_11_interpolate, "t11")
+  if (isTRUE(interpolate)) input <- step(T_QC_10_interpolate, "t10")
   
   # record what was skipped, so the result says so even without the console
-  skipped <- c(if (is.null(metadata)) c("t6", "t7"), if (!isTRUE(interpolate)) "t11")
-  input$qc_info$run_qc_temperature <- list(levels_skipped = if (length(skipped)) skipped else character(0))
+  skipped <- sort(unique(c(setdiff(seq_len(10), run), if (is.null(metadata)) c(6, 7), if (!isTRUE(interpolate)) 10)))
+  input$qc_info$run_qc_temperature <- list(levels         = run,
+                                           levels_skipped = if (length(skipped)) paste0("t", skipped) else character(0))
   input
 }
 
@@ -96,12 +108,16 @@ run_qc_temperature <- function(input,
 #' @param metadata Data frame with ID, LAT, LON, Landuse for level 7, or NULL
 #'   to skip it.
 #' @param interpolate Also run the optional level 8 gap interpolation.
+#' @param levels The levels allowed to run, as in `run_qc_temperature()`:
+#'   `-5` runs everything but level 5, `c(1:4, 7)` only those five. Level 8
+#'   still needs `interpolate = TRUE`.
 #' @param params Named list of per-level parameter overrides, keyed rh1..rh8,
 #'   e.g. `list(rh3 = list(threshold = 15))`.
 #' @param verbose Passed to every level.
 #'
-#' @return The chain list with qc_data, qc_data_flagged and qc_info; skipped
-#'   levels are listed in `qc_info$run_qc_humidity$levels_skipped`.
+#' @return The chain list with qc_data, qc_data_flagged and qc_info; the
+#'   levels run and skipped are listed in `qc_info$run_qc_humidity$levels`
+#'   and `$levels_skipped`.
 #'
 #' @examples
 #' \dontrun{
@@ -116,6 +132,7 @@ run_qc_humidity <- function(input,
                             temperature = NULL,
                             metadata = NULL,
                             interpolate = FALSE,
+                            levels = 1:8,
                             params = list(),
                             verbose = TRUE) {
   # the overrides must be a named list keyed by level
@@ -123,6 +140,8 @@ run_qc_humidity <- function(input,
   ok_keys <- paste0("rh", 1:8)
   if (length(params) && (is.null(names(params)) || !all(names(params) %in% ok_keys)))
     stop(sprintf("params keys must be among %s.", paste(ok_keys, collapse = ", ")))
+  # the levels this run may touch; the rest is left out and recorded as skipped
+  run <- qc_pick_levels(levels, 8, "rh")
   
   # does the temperature argument carry flags (i.e. is it a chain result)?
   has_flags <- is.list(temperature) && !is.data.frame(temperature) &&
@@ -130,6 +149,8 @@ run_qc_humidity <- function(input,
 
   # one level call: base arguments, overridden by the caller's params entry
   step <- function(fun, key, base = list()) {
+    # a level outside `levels` is left out
+    if (!(as.integer(sub("^rh", "", key)) %in% run)) return(input)
     args <- utils::modifyList(c(list(verbose = verbose), base),
                               if (is.null(params[[key]])) list() else params[[key]])
     do.call(fun, c(list(input = input), args))
@@ -152,7 +173,24 @@ run_qc_humidity <- function(input,
   if (isTRUE(interpolate)) input <- step(RH_QC_8_interpolate, "rh8")
 
   # record what was skipped, so the result says so even without the console
-  skipped <- c(if (!isTRUE(interpolate)) "rh8")
-  input$qc_info$run_qc_humidity <- list(levels_skipped = if (length(skipped)) skipped else character(0))
+  skipped <- sort(unique(c(setdiff(seq_len(8), run), if (!isTRUE(interpolate)) 8)))
+  input$qc_info$run_qc_humidity <- list(levels         = run,
+                                        levels_skipped = if (length(skipped)) paste0("rh", skipped) else character(0))
   input
+}
+
+# the levels a runner may run, from `levels`: numbers or names like "T3"/"t3",
+# positive to select, negative to exclude, as in R indexing
+qc_pick_levels <- function(levels, n, prefix) {
+  if (is.character(levels)) {
+    v <- suppressWarnings(as.numeric(sub(paste0("^(-?)", prefix, "([0-9]+)$"), "\\1\\2", levels, ignore.case = TRUE)))
+    if (anyNA(v))
+      stop(sprintf("levels must be numbers or names like \"%s3\" / \"-%s3\".", toupper(prefix), toupper(prefix)))
+    levels <- v
+  }
+  if (!is.numeric(levels) || !length(levels) || anyNA(levels) || any(levels != round(levels)) ||
+      any(levels == 0) || any(abs(levels) > n))
+    stop(sprintf("levels must be whole numbers between 1 and %d, or their negatives.", n))
+  if (any(levels > 0) && any(levels < 0)) stop("levels cannot mix positive and negative entries.")
+  if (all(levels < 0)) setdiff(seq_len(n), -levels) else sort(unique(as.integer(levels)))
 }

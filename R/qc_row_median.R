@@ -3,7 +3,7 @@
 #' The median of every row, ignoring NA, by one sort of the whole matrix
 #' instead of one `median()` call per row: ten times faster on a season of
 #' 10-minute data, which matters when a level needs one median per station
-#' (the median of all OTHER stations, as levels 9 and 10 do).
+#' (the median of all OTHER stations, as level 9 does).
 #'
 #' @param X Numeric matrix, stations in columns.
 #'

@@ -5,8 +5,7 @@
 # the colour of each level code; interpolation codes are grey
 qc_level_colours <- function() {
   c("1" = "#d62728", "2" = "#ff7f0e", "3" = "#9467bd", "4" = "#1f77b4", "5" = "#8c564b",
-    "6" = "#2ca02c", "7" = "#e377c2", "8" = "#17becf", "9" = "#bcbd22", "10" = "#393b79",
-    "50" = "grey70")
+    "6" = "#2ca02c", "7" = "#e377c2", "8" = "#17becf", "9" = "#393b79", "50" = "grey70")
 }
 
 # level code per cell: 0 unobjected, N objected by level N (a refilled removal

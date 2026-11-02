@@ -8,6 +8,7 @@ run_qc_temperature(
   input,
   metadata = NULL,
   interpolate = FALSE,
+  levels = 1:10,
   params = list(),
   verbose = TRUE
 )
@@ -18,20 +19,26 @@ run_qc_temperature(
 \item{metadata}{Data frame with ID, LAT, LON, Landuse for levels 6 and 7,
 or NULL to skip both.}
 
-\item{interpolate}{Also run the optional level 11 gap interpolation.}
+\item{interpolate}{Also run the optional level 10 gap interpolation.}
 
-\item{params}{Named list of per-level parameter overrides, keyed t1..t11,
+\item{levels}{The levels allowed to run: numbers or names like `"T3"`,
+positive to select, negative to exclude - `-9` runs everything but
+level 9, `c(1:3, 6)` only those four. Levels 6 and 7 still need
+`metadata`, level 10 still needs `interpolate = TRUE`.}
+
+\item{params}{Named list of per-level parameter overrides, keyed t1..t10,
 e.g. `list(t2 = list(summer_min = -10), t6 = list(k_sigma = 5))`. Every
 entry is passed to that level as arguments.}
 
 \item{verbose}{Passed to every level.}
 }
 \value{
-The chain list with qc_data, qc_data_flagged and qc_info; skipped
-  levels are listed in `qc_info$run_qc_temperature$levels_skipped`.
+The chain list with qc_data, qc_data_flagged and qc_info; the
+  levels run and skipped are listed in `qc_info$run_qc_temperature$levels`
+  and `$levels_skipped`.
 }
 \description{
-Convenience wrapper around levels T_QC_1 to T_QC_10 (and optionally 11). It
+Convenience wrapper around levels T_QC_1 to T_QC_9 (and optionally 10). It
 exists to prevent the two classic application mistakes: running the levels
 in the wrong order, and silently forgetting the spatial levels when the
 metadata are at hand. Every level remains individually callable; this
@@ -41,11 +48,13 @@ function adds nothing the manual chain does not have.
 Without `metadata` the spatial levels 6 and 7 are SKIPPED audibly - useful
 for a single isolated station, where they could never run anyway. The
 interpolation is off by default, because it alters the data (see
-`T_QC_11_interpolate`).
+`T_QC_10_interpolate`). `levels` limits the run to a subset of the levels,
+with the sign convention of R indexing.
 }
 \examples{
 \dontrun{
 res <- run_qc_temperature(x, metadata = meta)
+res <- run_qc_temperature(x, metadata = meta, levels = -9)
 res <- run_qc_temperature(x, metadata = meta, interpolate = TRUE,
                           params = list(t2 = list(summer_min = -10)))
 }

@@ -9,6 +9,7 @@ run_qc_humidity(
   temperature = NULL,
   metadata = NULL,
   interpolate = FALSE,
+  levels = 1:8,
   params = list(),
   verbose = TRUE
 )
@@ -24,14 +25,19 @@ to skip it.}
 
 \item{interpolate}{Also run the optional level 8 gap interpolation.}
 
+\item{levels}{The levels allowed to run, as in `run_qc_temperature()`:
+`-5` runs everything but level 5, `c(1:4, 7)` only those five. Level 8
+still needs `interpolate = TRUE`.}
+
 \item{params}{Named list of per-level parameter overrides, keyed rh1..rh8,
 e.g. `list(rh3 = list(threshold = 15))`.}
 
 \item{verbose}{Passed to every level.}
 }
 \value{
-The chain list with qc_data, qc_data_flagged and qc_info; skipped
-  levels are listed in `qc_info$run_qc_humidity$levels_skipped`.
+The chain list with qc_data, qc_data_flagged and qc_info; the
+  levels run and skipped are listed in `qc_info$run_qc_humidity$levels`
+  and `$levels_skipped`.
 }
 \description{
 Convenience wrapper around levels RH_QC_1 to RH_QC_7 (and optionally 8).
