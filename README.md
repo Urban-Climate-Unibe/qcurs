@@ -5,8 +5,9 @@ networks. R package, built on `xts`. Temperature runs through ten levels,
 humidity through eight; every level reads the same list, writes the same
 list, and leaves a record of what it did.
 
-The chain follows Amini et al. (2026), *Scientific Data* 13:658, with the
-review findings fixed (see "Divergences" at the end).
+The temperature chain follows Amini et al. (2026), *Scientific Data* 13:658,
+with the review findings fixed (see "Divergences" at the end); levels 8 and 9
+are additions.
 
 ## Install
 
@@ -25,7 +26,7 @@ under GitHub > Settings > Developer settings > Personal access tokens (scope
 From a downloaded tarball or zip:
 
 ```r
-remotes::install_local("qcurs_0.3.7.tar.gz")
+remotes::install_local("qcurs_0.5.1.tar.gz")
 ```
 
 Needs `xts`, `zoo`, `geosphere`; `remotes` installs them.
@@ -86,8 +87,14 @@ t_res <- run_qc_temperature(x, metadata = meta,
 `levels` limits a run, with the sign convention of R indexing: `levels = -9`
 runs everything but level 9, `levels = c(1:3, 6)` only those four.
 
-Or call the levels yourself, in any order, on a bare `xts` or on the list
-the previous level returned:
+The temperature runner runs level 8 before levels 6 and 7 - it judges whole
+days of a station, and the neighbour comparisons would thin a logger indoors
+out first - and level 9 last, after level 6 has taken out the hours with sun
+on the sensor. Numbers and flag codes are not affected.
+
+Or call the levels yourself, on a bare `xts` or on the list the previous
+level returned. Any order runs, but the result depends on it; this is the
+order of the runner:
 
 ```r
 res <- T_QC_1_gross_error(x)
@@ -95,9 +102,9 @@ res <- T_QC_2_out_of_range(res)
 res <- T_QC_3_time_consistency(res)
 res <- T_QC_4_stuck_values(res)
 res <- T_QC_5_climatic_outliers(res)
+res <- T_QC_8_diurnal_range(res)
 res <- T_QC_6_spatial_consistency(res, metadata = meta)
 res <- T_QC_7_spatiotemporal_consistency(res, metadata = meta)
-res <- T_QC_8_diurnal_range(res)
 res <- T_QC_9_clock_offset(res)
 res <- T_QC_10_interpolate(res)   # only if you want filled gaps - see below
 ```
@@ -159,8 +166,8 @@ i6$never_evaluated        # those stations by name
 The other refusals by name: `t5_climatic_outliers$refused` (station-months),
 `t7_spatiotemporal_consistency$never_evaluated` (stations), `t8_diurnal_range$days_unjudged`
 and `$runs_undecided`,
-`t9_clock_offset$lags` (the best lag of every station-week, NA = not judged)
-and `$episodes`,
+`t9_clock_offset$lags` (the best lag of every station-week, NA = not judged),
+`$episodes` and `$windows_undecided`,
 `rh1_inherit_temperature$loggers_unmatched`, `rh4_stuck_values$sat_ceiling`
 (where each sensor saturates), `rh5_decoupling$never_evaluated`
 and `$days_unjudged`, `rh6_saturation_drift$n_saturated_steps`,
@@ -211,20 +218,22 @@ data. If you publish an interpolated series, say so and publish the codes.
 | T5 | daily maximum above Q3 + m·IQR or daily minimum below Q1 − m·IQR of the station's pooled month | m 2.5, ≥ 60 days, more than one year |
 | T6 | off the weighted neighbour consensus | max(6σ, 3 K), 3 km, 5 compatible neighbours, ≥ 2 valid, within 100 m elevation when `ELEV` is given; `landuse_mode = "none"` for small networks (coverage at the price of landuse-driven flags: clean Biel 0.75 %) |
 | T7 | 99 % extreme against all 5 neighbours AND both time neighbours | 2500 m |
-| T8 | diurnal range below 0.4 of the network median of the same day, ≥ 3 days in a row, AND the daily means over the run swing less than 0.4 of the network's (a logger indoors; fog still follows the weather) | ≥ 72 values/day, ≥ 3 stations, network swing ≥ 2 K |
-| T9 | best cross-correlation lag against the median of the other stations, per 7-day window, rounds to ≥ 6 steps (one hour) with the same sign in ≥ 2 windows in a row (site lags of up to 55 min at forest and lake sites stay below) | ± 12 steps searched, ≥ 50 % of the window, r ≥ 0.7, ≥ 3 stations |
+| T8 | diurnal range below 0.4 of the network median of the same day, ≥ 3 days in a row, AND the daily means over the run swing less than 0.4 of the network's (a logger indoors; fog still follows the weather) | ≥ half a day of values, ≥ 3 stations, network swing ≥ 2 K |
+| T9 | best cross-correlation lag against the median of the other stations, per 7-day window, rounds to ≥ one hour with the same sign in ≥ 2 windows in a row (site lags of 20-55 min at forest and lake sites stay below; single weeks at the hour - 3 of 8634 station-weeks in Thun and Bern - do not come twice in a row); a window in which half of the judged stations or more look offset is not judged | ± two hours searched, ≥ 50 % of the window, r ≥ 0.7, ≥ 3 stations |
 | T10 | linear fill | gaps ≤ 5 steps |
 | RH1 | inherit temperature flags (not the plain gap fill 50) | |
 | RH2 | outside the physical range | 0-105 % |
 | RH3 | as T3 | 20 %, ±3 steps |
 | RH4 | as T4, except when the window median is ≥ 95 % or at the station's own 90th percentile (its ceiling: the Thun sensors saturate at 73-90 %) | 6 h, sd 0.1 |
-| RH5 | daily T-RH correlation ≥ -0.3 on days with ≥ 3 K amplitude, ≥ 2 judged days in a row; a day on which > 25 % of the stations look decoupled is weather and is not judged | ≥ 60 pairs/day |
+| RH5 | daily T-RH correlation ≥ -0.3 on days with ≥ 3 K amplitude, ≥ 2 days in a row; a day on which the humidity does not move at all counts as decoupled; a day on which > 25 % of the stations look decoupled is weather and is not judged | ≥ ten hours of pairs/day |
 | RH6 | below 90 % while the network median is ≥ 95 %; skips itself, audibly, when the network never gets there | 30-day segments, ≥ 12 hits |
 | RH7 | as T6, on the dewpoint | floor 4 K (not 3: healthy low-cost sensors differ by 2-3 K at saturation), otherwise as T6 |
 | RH8 | as T10 | |
 
 Windows are given as text (`"6 hours"`, `"90 mins"`, `"2 days"`) or as a
-`difftime`; the level converts them with the time step of the data.
+`difftime`; the level converts them with the time step of the data. The
+values a day needs and the lags of T9 default to a share of the day and to
+hours, converted the same way.
 
 ## Files
 
@@ -250,10 +259,11 @@ Everything else is internal.
 
 `inst/extdata/` holds the Biel summer 2025 campaign (7 loggers, 10 min,
 June-August) with six planted error classes; `planted_errors.csv` says where.
-`tests/testthat/` checks that each class reaches its level, that levels 5 and
-7 refuse on a single season, that the real minima survive, and that every
-level's coverage counts are consistent with its flags. Levels 5 and 7 prove
-their positive path on synthetic data.
+`tests/testthat/` checks that each class reaches its level, that level 5
+refuses on a single season and level 7 where no station has five neighbours,
+that the real minima survive, and that every level's coverage counts are
+consistent with its flags. Levels 5 and 7 prove their positive path on
+synthetic data.
 
 ## Divergences from the published pipeline
 
@@ -262,5 +272,5 @@ applied AFTER the landuse masking and there is no sigma gate (T6, RH7); the NA
 tolerance of the stuck test is real (T4); the seasonal bounds are
 configurable and their provenance is written down (T2); levels 5 and 7
 refuse instead of computing nonsense on short campaigns, and level 5 works
-on the daily extremes with m = 2.5 (the published 4 never bites); level 8 is
-new.
+on the daily extremes with m = 2.5 (the published 4 never bites); levels 8
+and 9 are new.

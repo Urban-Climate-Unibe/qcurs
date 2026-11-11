@@ -9,7 +9,8 @@ qc_summary(res, chain = NULL)
 \arguments{
 \item{res}{A chain result list (qc_data, qc_data_flagged, qc_info).}
 
-\item{chain}{`"t"` or `"rh"`; NULL picks the chain the result belongs to.}
+\item{chain}{`"t"` or `"rh"`; NULL picks the chain the result belongs to.
+For the records of the other chain `judged_pct` is NA.}
 }
 \value{
 Data frame with `level`, `station`, `flagged`, `judged`,

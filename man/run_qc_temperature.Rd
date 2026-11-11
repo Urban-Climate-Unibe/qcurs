@@ -27,8 +27,8 @@ level 9, `c(1:3, 6)` only those four. Levels 6 and 7 still need
 `metadata`, level 10 still needs `interpolate = TRUE`.}
 
 \item{params}{Named list of per-level parameter overrides, keyed t1..t10,
-e.g. `list(t2 = list(summer_min = -10), t6 = list(k_sigma = 5))`. Every
-entry is passed to that level as arguments.}
+e.g. `list(t3 = list(threshold = 5), t6 = list(k_sigma = 5))`. Every
+entry is passed to that level as arguments, exactly as given.}
 
 \item{verbose}{Passed to every level.}
 }
@@ -45,8 +45,15 @@ metadata are at hand. Every level remains individually callable; this
 function adds nothing the manual chain does not have.
 }
 \details{
-Without `metadata` the spatial levels 6 and 7 are SKIPPED audibly - useful
-for a single isolated station, where they could never run anyway. The
+Level 8 runs before levels 6 and 7: it judges whole days of a station, and
+the neighbour comparisons would thin a logger indoors out before it gets
+there. Level 9 runs last: a daily course distorted by sun on the sensor
+shows the same lag as a wrong clock, and level 6 has to take those hours
+out first. Numbers and flag codes stay as they are.
+
+Without `metadata` the spatial levels 6 and 7 skip themselves, with the
+reason in their record - useful for a single isolated station, where they
+could never run anyway. The
 interpolation is off by default, because it alters the data (see
 `T_QC_10_interpolate`). `levels` limits the run to a subset of the levels,
 with the sign convention of R indexing.
@@ -56,7 +63,7 @@ with the sign convention of R indexing.
 res <- run_qc_temperature(x, metadata = meta)
 res <- run_qc_temperature(x, metadata = meta, levels = -9)
 res <- run_qc_temperature(x, metadata = meta, interpolate = TRUE,
-                          params = list(t2 = list(summer_min = -10)))
+                          params = list(t3 = list(threshold = 5)))
 }
 
 }

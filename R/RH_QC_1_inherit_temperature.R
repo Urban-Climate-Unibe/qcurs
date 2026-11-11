@@ -49,7 +49,7 @@ RH_QC_1_inherit_temperature <- function(input,
   skip <- function(reason) {
     if (isTRUE(verbose))
       message("RH1 inherit temperature mask: ", reason, " - no inheritance, continuing with the next level.")
-    input$qc_info$rh1_inherit_temperature <- list(n_flagged = 0L, inherited = FALSE, reason = reason)
+    input$qc_info$rh1_inherit_temperature <- list(n_flagged = 0L, skipped = TRUE, inherited = FALSE, reason = reason)
     input
   }
   if (is.null(temperature_flags)) return(skip("no temperature flags supplied"))
@@ -62,11 +62,11 @@ RH_QC_1_inherit_temperature <- function(input,
     t_info <- tf$qc_info
     tf <- tf$qc_data_flagged
   }
-  # matching needs time stamps AND logger names - a bare matrix has neither
+  # matching needs time stamps and logger names - a bare matrix has neither
   if (!inherits(tf, "xts") || is.null(colnames(tf)))
     return(skip("temperature_flags must be an xts flag matrix with logger names"))
   # a flag matrix holds only the codes of the convention (0-10 for the levels,
-  # 50-60 for the interpolation). A temperature VALUE series fails this
+  # 50-60 for the interpolation). A temperature value series fails this
   M_t <- coredata(tf)
   if (!is.numeric(M_t) || !all(M_t %in% c(0:10, 50:60) | is.na(M_t)))
     return(skip("temperature_flags holds values outside the flag codes 0-10/50-60 (pass qc_data_flagged, not the values)"))
@@ -82,11 +82,10 @@ RH_QC_1_inherit_temperature <- function(input,
   n_time_matched <- tm$n_time
 
   #-------------------------------------------------------------------------------
-  # Perform RH QC Level 1
+  # perform RH QC level 1
 
-  # plain numeric matrix of the values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
   M <- tm$M
 
@@ -97,9 +96,7 @@ RH_QC_1_inherit_temperature <- function(input,
   if (!isTRUE(inherit_gapfill)) hit <- hit & M != 50
   # only cells that hold a humidity value and carry no earlier flag
   mask <- hit & !is.na(X) & (is.na(previous_flag) | previous_flag == 0)
-  # how many cells this level objects to
   n_total <- sum(mask)
-  # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
   # per-station coverage: humidity values that had a temperature flag to look at
   n_judged <- stats::setNames(colSums(!is.na(M) & !is.na(X)), colnames(X))
@@ -108,7 +105,6 @@ RH_QC_1_inherit_temperature <- function(input,
   tab <- table(M[mask])
   n_by_t_code <- stats::setNames(as.integer(tab), names(tab))
 
-  # apply only if something was found
   if (n_total > 0) {
     # blank the inherited cells so later levels never see them
     X[mask] <- NA
@@ -133,7 +129,7 @@ RH_QC_1_inherit_temperature <- function(input,
       message("  no temperature for: ", paste(unmatched, collapse = ", "))
   }
   # carry the temperature run's records over, so the finished humidity object
-  # documents BOTH chains; only keys that do not exist yet, nothing is overwritten
+  # documents both chains; only keys that do not exist yet, nothing is overwritten
   if (!is.null(t_info))
     for (k in setdiff(names(t_info), names(input$qc_info)))
       input$qc_info[[k]] <- t_info[[k]]

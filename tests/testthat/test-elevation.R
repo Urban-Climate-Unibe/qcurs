@@ -29,3 +29,26 @@ test_that("ELEV in the metadata keeps a station on the slope out of the consensu
   expect_gt(wide$qc_info$t6_spatial_consistency$n_judged_by_station[["S7"]], 0)
   expect_error(T_QC_6_spatial_consistency(x, metadata = md, max_elev_diff = 0), "max_elev_diff")
 })
+
+test_that("the geometry reads a landuse stored as a factor and needs none in mode none", {
+  set.seed(4)
+  ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = 288)
+  X <- sapply(1:4, function(j) 18 + 0.3 * j + rnorm(288, 0, 0.15))
+  colnames(X) <- paste0("S", 1:4)
+  x <- xts::xts(X, order.by = ti)
+  md <- data.frame(ID = colnames(X), LAT = 47.13 + 1:4 * 0.002, LON = 7.25 + 1:4 * 0.002,
+                   Landuse = c("Sealed Areas", "Sealed Areas", "Sealed Areas", "Vegetated Areas"),
+                   stringsAsFactors = FALSE)
+  mdf <- md
+  mdf$Landuse <- factor(mdf$Landuse)
+  r_chr <- T_QC_6_spatial_consistency(x, metadata = md, verbose = FALSE)
+  r_fac <- T_QC_6_spatial_consistency(x, metadata = mdf, verbose = FALSE)
+  expect_identical(r_fac$qc_info$t6_spatial_consistency$n_judged_by_station,
+                   r_chr$qc_info$t6_spatial_consistency$n_judged_by_station)
+  expect_identical(r_fac$qc_info$t6_spatial_consistency$never_evaluated, "S4")
+  # without the column: an error where the landuse is used, none where it is not
+  md3 <- md[, c("ID", "LAT", "LON")]
+  expect_error(T_QC_6_spatial_consistency(x, metadata = md3, verbose = FALSE), "Landuse")
+  r_none <- T_QC_6_spatial_consistency(x, metadata = md3, landuse_mode = "none", verbose = FALSE)
+  expect_length(r_none$qc_info$t6_spatial_consistency$never_evaluated, 0)
+})

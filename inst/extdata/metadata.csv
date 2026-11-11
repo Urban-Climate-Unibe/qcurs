@@ -88,7 +88,7 @@ Log_155;Ostermundigen Milchstrasse;7.48201;46.96241;Sealed Areas;BERN
 Log_156;Ostermundigen Tiefenmosli;7.48411;46.94801;Sealed Areas;BERN
 Log_161;Ostermundigen Schermenweg;7.48052;46.95821;Sealed Areas;BERN
 Log_162;Ostermundigen Poststrasse;7.48222;46.95867;Sealed Areas;BERN
-Log_163;Ostermundigen YB Campus;46.966136;7.495357;Vegetated Areas;BERN
+Log_163;Ostermundigen YB Campus;7.495357;46.966136;Vegetated Areas;BERN
 Log_171;Postgasse Nord;7.4542;46.94886;Sealed Areas;BERN
 Log_401;Referenz 3m;7.58521;46.74982;Vegetated Areas;THUN
 Log_402;Referenz 2m;7.58521;46.74982;Vegetated Areas;THUN
@@ -130,16 +130,16 @@ Log_BD_33;Gyrischachen;7.627;47.063;Sealed Areas;BURGDORF
 Log_BD_34;Altstadt;7.626;47.057;Sealed Areas;BURGDORF
 Log_BD_60C2;Bahnhof_Wind;7.621702;47.060338;Sealed Areas;BURGDORF
 Log_BD_60C3;Ischlag_Wind;7.629051;47.046886;Sealed Areas;BURGDORF
-Log_501;Seefeld;46.887108;8.24338;Water;SARNEN
-Log_502;Kantonsspital;46.889393;8.245972;Vegetated Areas;SARNEN
-Log_504;Ennetriederweg;46.892021;8.249906;Vegetated Areas;SARNEN
-Log_505;Klosterbezirk;46.892405;8.245727;Sealed Areas;SARNEN
-Log_509;Marktplatz;46.89618;8.248748;Sealed Areas;SARNEN
-Log_510;Buenten;46.898875;8.252714;Vegetated Areas;SARNEN
-Log_511;Industrie Nord;46.902668;8.252238;Sealed Areas;SARNEN
-Log_512;Bitzighofen;46.903895;8.246228;Sealed Areas;SARNEN
-Log_513;Mobil I (Krone);46.897835;8.246202;Sealed Areas;SARNEN
-Log_514;Mobil II (Industrie);46.901465;8.251111;Sealed Areas;SARNEN
+Log_501;Seefeld;8.24338;46.887108;Water;SARNEN
+Log_502;Kantonsspital;8.245972;46.889393;Vegetated Areas;SARNEN
+Log_504;Ennetriederweg;8.249906;46.892021;Vegetated Areas;SARNEN
+Log_505;Klosterbezirk;8.245727;46.892405;Sealed Areas;SARNEN
+Log_509;Marktplatz;8.248748;46.89618;Sealed Areas;SARNEN
+Log_510;Buenten;8.252714;46.898875;Vegetated Areas;SARNEN
+Log_511;Industrie Nord;8.252238;46.902668;Sealed Areas;SARNEN
+Log_512;Bitzighofen;8.246228;46.903895;Sealed Areas;SARNEN
+Log_513;Mobil I (Krone);8.246202;46.897835;Sealed Areas;SARNEN
+Log_514;Mobil II (Industrie);8.251111;46.901465;Sealed Areas;SARNEN
 Log_LH002;Stadel;8.76542811;47.53290349;Sealed Areas;WINTERTHUR
 Log_LH003;Graben;8.73092833;47.49802875;Sealed Areas;WINTERTHUR
 Log_LH005;Eichliacker;8.711172737;47.48818074;Sealed Areas;WINTERTHUR

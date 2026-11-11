@@ -1,3 +1,73 @@
+# qcurs 0.5.1 (2026-11-10)
+
+Fixes from the final review of 0.5.0.
+
+## Method
+
+* The temperature runner runs level 8 before levels 6 and 7. Level 6 removed
+  part of a logger indoors, and what it left was too sparse for level 8 to
+  judge: 25 to 41 percent of an indoor episode stayed in the data. Level 9
+  stays last: sun on the sensor shifts the daily course like a wrong clock
+  (one Thun station, spring 2026: 55 to 76 minutes before level 6, 19 to 40
+  after it), and level 6 has to take those hours out first. Numbers and flag
+  codes are unchanged, only the order of execution differs. On Bern (94
+  stations) and Thun (36) from January 2025 to November 2026 the flags are
+  those of 0.5.0.
+* `T_QC_9_clock_offset()`: a window in which at least half of the judged
+  stations show an offset is judged at no station and listed in
+  `windows_undecided`. With three stations, one of them two hours out made
+  the other two look an hour out, and all three were objected to.
+* `RH_QC_5_decoupling()`: a day on which the humidity does not move at all
+  while the temperature swings counts as decoupled; the correlation is
+  undefined there and gave no verdict. All valid humidity values of an
+  objected day are removed, also where the temperature has a gap.
+* The values a day needs and the lags of level 9 follow the time step:
+  `min_obs_per_day` (T5, T8), `decouple_min_n` (RH5), `min_lag` and
+  `max_lag` (T9) default to NULL = half a day, ten hours, one hour and two
+  hours. At 10 minutes that is 72, 60, 6 and 12 as before. On 30-minute data
+  levels T5, T8 and RH5 judged nothing, in silence; on 15-minute data the
+  hour of T9 was 90 minutes.
+* `T_QC_10_interpolate()` and `RH_QC_8_interpolate()`: a gap is measured on
+  the full time grid, so rows missing from the index count as steps.
+
+## Structure
+
+* Runners: no error when no level runs. `params` entries replace the base
+  argument exactly as given, NULL and tables included. Without metadata
+  levels 6 and 7 run, skip themselves and leave their record, as the
+  humidity levels do. `levels` lists the levels that ran.
+* `Landuse` may be a factor, and is not needed with `landuse_mode = "none"`.
+* `RH_QC_7_dewpoint_consistency()` needs `min_neighbours + 1` stations, like
+  level T6. `T_QC_7_spatiotemporal_consistency()` skips itself with fewer
+  than `k_neighbours + 1` stations, lists `never_evaluated` by name and the
+  neighbours found in `n_neighbours`. The skip record of RH1 carries
+  `skipped = TRUE`.
+* T5 lists a station-month that reported but had no full day in `refused`.
+* Counts that must be whole numbers are checked before the work starts.
+* `qc_summary()`: `judged_pct` is NA for the records of the other chain.
+* Plots: a clean result, a station with every value objected to, a lone
+  `to` and a result of the interpolation alone no longer stop.
+
+## Documentation
+
+* T5: `require_multi_year = FALSE` needs a `min_days` one month can reach.
+* Runner example: `summer_min` no longer exists. T3: `threshold`, not `diff`.
+* RH5: "days in a row", as the code counts them; what a single station
+  cannot tell from lasting fog.
+* T9: the hour is not above every site lag - single weeks reach it, and it
+  is the two windows in a row that keep the sites out; sun on the sensor
+  looks like a wrong clock.
+* RH6: the 85 percent of the Thun network is the summer figure, 89 over the
+  whole year.
+* README and template: the manual chain in the order of the runner; levels 8
+  and 9 named as additions to the published chain; level 7 refuses in Biel
+  for want of neighbours, not of seasons.
+
+## Data
+
+* `inst/extdata/metadata.csv`: LON and LAT were the wrong way round at
+  Log_163 (Bern) and at the ten Sarnen stations.
+
 # qcurs 0.5.0 (2026-11-02)
 
 ## Method

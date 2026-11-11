@@ -25,17 +25,22 @@ test_that("run_qc_temperature equals the manual chain and records skips", {
   r_man  <- T_QC_3_time_consistency(r_man, verbose = FALSE)
   r_man  <- T_QC_4_stuck_values(r_man, verbose = FALSE)
   r_man  <- T_QC_5_climatic_outliers(r_man, verbose = FALSE)
+  # the order of the runner: level 8 before levels 6 and 7, level 9 last
+  r_man  <- T_QC_8_diurnal_range(r_man, verbose = FALSE)
   r_man  <- T_QC_6_spatial_consistency(r_man, metadata = f$md, verbose = FALSE)
   r_man  <- T_QC_7_spatiotemporal_consistency(r_man, metadata = f$md, verbose = FALSE)
-  r_man  <- T_QC_8_diurnal_range(r_man, verbose = FALSE)
   r_man  <- T_QC_9_clock_offset(r_man, verbose = FALSE)
   expect_identical(zoo::coredata(r_auto$qc_data_flagged), zoo::coredata(r_man$qc_data_flagged))
+  expect_identical(grep("^t[0-9]+_", names(r_auto$qc_info), value = TRUE), grep("^t[0-9]+_", names(r_man$qc_info), value = TRUE))
+  # and the records say so: they stand in the order the levels ran
+  expect_identical(sub("_.*$", "", grep("^t[0-9]+_", names(r_auto$qc_info), value = TRUE)), paste0("t", c(1:5, 8, 6, 7, 9)))
   expect_identical(r_auto$qc_info$run_qc_temperature$levels_skipped, "t10")
-  expect_identical(r_auto$qc_info$run_qc_temperature$levels, 1:10)
-  # without metadata the spatial levels are skipped and say so in the record
+  expect_identical(r_auto$qc_info$run_qc_temperature$levels, 1:9)
+  # without metadata the spatial levels run, skip themselves and say so in their record
   r_no <- run_qc_temperature(f$tt, verbose = FALSE)
-  expect_true(all(c("t6", "t7") %in% r_no$qc_info$run_qc_temperature$levels_skipped))
-  expect_false("t6_spatial_consistency" %in% names(r_no$qc_info))
+  expect_true(r_no$qc_info$t6_spatial_consistency$skipped)
+  expect_true(r_no$qc_info$t7_spatiotemporal_consistency$skipped)
+  expect_identical(r_no$qc_info$run_qc_temperature$levels_skipped, "t10")
 })
 
 test_that("params overrides reach their level", {
@@ -53,7 +58,7 @@ test_that("levels selects or excludes levels, by number or by name", {
   r <- run_qc_temperature(f$tt, metadata = f$md, levels = -9, verbose = FALSE)
   expect_false("t9_clock_offset" %in% names(r$qc_info))
   expect_true(all(c("t8_diurnal_range", "t6_spatial_consistency") %in% names(r$qc_info)))
-  expect_identical(r$qc_info$run_qc_temperature$levels, c(1:8, 10L))
+  expect_identical(r$qc_info$run_qc_temperature$levels, 1:8)
   expect_true(all(c("t9", "t10") %in% r$qc_info$run_qc_temperature$levels_skipped))
   # select a few: only those run, in the chain order
   r2 <- run_qc_temperature(f$tt, metadata = f$md, levels = c(6, 1:3), verbose = FALSE)
@@ -65,10 +70,12 @@ test_that("levels selects or excludes levels, by number or by name", {
   expect_equal(grep("^t[0-9]+_", names(r3$qc_info), value = TRUE), c("t1_gross_error", "t4_stuck_values"))
   r4 <- run_qc_temperature(f$tt, levels = "-T9", verbose = FALSE)
   expect_false("t9_clock_offset" %in% names(r4$qc_info))
-  # level 10 still needs interpolate, level 6 still needs metadata
+  # level 10 still needs interpolate; level 6 runs without metadata and skips itself
   r5 <- run_qc_temperature(f$tt, levels = c(1, 6, 10), verbose = FALSE)
-  expect_equal(grep("^t[0-9]+_", names(r5$qc_info), value = TRUE), "t1_gross_error")
-  expect_true(all(c("t6", "t10") %in% r5$qc_info$run_qc_temperature$levels_skipped))
+  expect_equal(grep("^t[0-9]+_", names(r5$qc_info), value = TRUE), c("t1_gross_error", "t6_spatial_consistency"))
+  expect_true(r5$qc_info$t6_spatial_consistency$skipped)
+  expect_true("t10" %in% r5$qc_info$run_qc_temperature$levels_skipped)
+  expect_identical(r5$qc_info$run_qc_temperature$levels, c(1L, 6L))
   # bad input is refused
   expect_error(run_qc_temperature(f$tt, levels = c(1, -2)), "mix")
   expect_error(run_qc_temperature(f$tt, levels = 11), "between 1 and 10")
@@ -79,7 +86,7 @@ test_that("levels selects or excludes levels, by number or by name", {
   rh <- run_qc_humidity(f$rh, temperature = t_res, levels = -3, verbose = FALSE)
   expect_false("rh3_spike" %in% names(rh$qc_info))
   expect_true("rh3" %in% rh$qc_info$run_qc_humidity$levels_skipped)
-  expect_identical(rh$qc_info$run_qc_humidity$levels, c(1L, 2L, 4:8))
+  expect_identical(rh$qc_info$run_qc_humidity$levels, c(1L, 2L, 4:7))
 })
 
 test_that("run_qc_humidity wires the temperature result into levels 1, 5 and 7", {
@@ -93,10 +100,13 @@ test_that("run_qc_humidity wires the temperature result into levels 1, 5 and 7",
   expect_equal(unname(FLG[360, 2]), 53)               # spike (3), then refilled by 8
   expect_true(all(FLG[500:502, 3] == 50))             # plain gap filled
   expect_gt(r$qc_info$rh8_interpolate$n_refilled, 0)
-  # the combined record documents BOTH chains
+  # the combined record documents both chains
   expect_true(all(c("dataset_temperature", "dataset_humidity",
                     "t1_gross_error", "rh1_inherit_temperature") %in% names(r$qc_info)))
   expect_identical(r$qc_info$run_qc_humidity$levels_skipped, character(0))
+  # the temperature records travel along, but their coverage share does not
+  expect_true(all(is.na(qc_summary(r, chain = "t")$judged_pct)))
+  expect_false(anyNA(qc_summary(r)$judged_pct))
 })
 
 test_that("run_qc_humidity skips audibly with a bare series or nothing", {
@@ -112,5 +122,43 @@ test_that("run_qc_humidity skips audibly with a bare series or nothing", {
   expect_true(r0$qc_info$rh5_decoupling$skipped)                    # ran, skipped itself
   expect_true(r0$qc_info$rh7_dewpoint_consistency$skipped)          # ran, skipped itself
   expect_false(r0$qc_info$rh1_inherit_temperature$inherited)
+  expect_true(r0$qc_info$rh1_inherit_temperature$skipped)
   expect_true("rh6_saturation_drift" %in% names(r0$qc_info))
+})
+
+test_that("the runners survive a run of no level and pass params exactly as given", {
+  f <- runner_fixture()
+  # only the interpolation asked for, but not switched on: nothing runs, nothing breaks
+  r <- run_qc_temperature(f$tt, levels = 10, verbose = FALSE)
+  expect_identical(r$qc_info$run_qc_temperature$levels, integer(0))
+  expect_true(all(zoo::coredata(r$qc_data_flagged) == 0))
+  rh <- run_qc_humidity(f$rh, levels = 8, verbose = FALSE)
+  expect_identical(rh$qc_info$run_qc_humidity$levels, integer(0))
+  # NULL is a value like any other: the level's own ceiling is switched off
+  r4 <- run_qc_humidity(f$rh, levels = 4, params = list(rh4 = list(sat_quantile = NULL)), verbose = FALSE)
+  expect_null(r4$qc_info$rh4_stuck_values$sat_quantile)
+  # a table in params replaces the runner's, it is not spliced into it
+  expect_warning(r6 <- run_qc_temperature(f$tt, metadata = f$md, levels = 6,
+                                          params = list(t6 = list(metadata = f$md[1:3, ])), verbose = FALSE),
+                 "No metadata for: S4")
+  expect_identical(r6$qc_info$t6_spatial_consistency$never_evaluated, "S4")
+  expect_error(run_qc_temperature(f$tt, params = list(t3 = 5)), "named list")
+})
+
+test_that("the runner lets level 8 judge a logger indoors before level 6 thins it out", {
+  set.seed(1)
+  n <- 40 * 144
+  ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = n)
+  h <- as.numeric(ti - ti[1], units = "hours")
+  X <- sapply(1:6, function(j) 18 + 6 * sin(2 * pi * (h - 9) / 24) + 4 * sin(2 * pi * h / 216) + 0.3 * j + rnorm(n, 0, 0.15))
+  colnames(X) <- paste0("S", 1:6)
+  # S3 is taken indoors on 10 June and keeps logging
+  ind <- format(ti, "%Y-%m-%d") >= "2025-06-10"
+  X[ind, 3] <- 21 + rnorm(sum(ind), 0, 0.1)
+  md <- data.frame(ID = colnames(X), LAT = 47.13 + 1:6 * 0.002, LON = 7.25 + 1:6 * 0.002,
+                   Landuse = "Sealed Areas", stringsAsFactors = FALSE)
+  r <- run_qc_temperature(xts::xts(X, order.by = ti), metadata = md, verbose = FALSE)
+  # every indoor value carries the code of the level that names the fault
+  expect_true(all(zoo::coredata(r$qc_data_flagged)[ind, 3] == 8))
+  expect_true(all(zoo::coredata(r$qc_data_flagged)[, -3] == 0))
 })

@@ -23,9 +23,9 @@ published 6 K catches nothing that 4 K does not.}
 The chain list with qc_data, qc_data_flagged and qc_info.
 }
 \description{
-A value is removed only if it deviates by at least `diff` from the median of
-the surrounding window AND from the values before it AND from the values
-after it.
+A value is removed only if it deviates by at least `threshold` from the
+median of the surrounding window AND from the values before it AND from the
+values after it.
 }
 \examples{
 \dontrun{

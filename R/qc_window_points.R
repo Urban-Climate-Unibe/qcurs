@@ -38,7 +38,7 @@ qc_window_points <- function(window, step_sec, arg = "window_size") {
     win_min <- as.numeric(as.difftime(num, units = unit), units = "mins")
   }
   label <- if (inherits(window, "difftime")) format(window) else window
-  # window length in intervals; round and SAY so instead of truncating in silence
+  # window length in intervals; round and say so instead of truncating in silence
   n_steps <- win_min / step_min
   if (abs(n_steps - round(n_steps)) > 1e-9)
     warning(sprintf("%s '%s' is %.2f time steps at a %g min resolution; using %d steps (%g min).",

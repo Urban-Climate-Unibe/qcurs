@@ -80,3 +80,26 @@ test_that("T9 runs clean on the Biel network and leaves its record", {
   expect_true(all(i9$n_judged_by_station > 0))
   expect_equal(nrow(i9$episodes), 0)
 })
+
+test_that("T9 judges nobody when half the network looks offset", {
+  f <- shift_fixture(days = 28)
+  X <- zoo::coredata(f$x)[, 1:3]
+  n <- nrow(X)
+  # one of three stations two hours early: the median of the other two is the
+  # mean of a good and a bad one, and both healthy stations look an hour late
+  X2 <- X
+  X2[, 3] <- c(X[13:n, 3], rep(NA, 12))
+  i2 <- T_QC_9_clock_offset(xts::xts(X2, order.by = f$ti), verbose = FALSE)$qc_info$t9_clock_offset
+  expect_true(all(round(i2$lags[, 3]) == 12))
+  expect_true(all(round(i2$lags[, 1:2]) == -6))
+  expect_equal(i2$n_flagged, 0)
+  expect_length(i2$windows_undecided, 4)
+  expect_true(all(i2$n_judged_by_station == 0))
+  # ninety minutes: the healthy two stay below the hour, only the offset one is objected to
+  X3 <- X
+  X3[, 3] <- c(X[10:n, 3], rep(NA, 9))
+  i3 <- T_QC_9_clock_offset(xts::xts(X3, order.by = f$ti), verbose = FALSE)$qc_info$t9_clock_offset
+  expect_gt(i3$n_flagged_by_station[["S3"]], 0)
+  expect_equal(sum(i3$n_flagged_by_station[c("S1", "S2")]), 0)
+  expect_length(i3$windows_undecided, 0)
+})

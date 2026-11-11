@@ -45,19 +45,18 @@ RH_QC_8_interpolate <- function(input,
   #-------------------------------------------------------------------------------
   # validate the parameters, because the caller may set them freely
 
-  # the gap bound must be a positive whole number of steps
   if (!is.numeric(maxgap) || length(maxgap) != 1 || maxgap < 1 || maxgap != round(maxgap))
     stop("maxgap must be a positive whole number of steps.")
 
   #-------------------------------------------------------------------------------
-  # Perform RH8 - this level creates values, it does not test
+  # perform RH QC level 8: this level creates values, it does not test
 
-  # plain numeric matrix of the values (QC removals are NA here)
+  # plain matrices of values and flags; what the QC removed is NA here
   X <- coredata(x)
-  # plain numeric matrix of the accumulated flags
   previous_flag <- coredata(flg)
   # the filling itself lives in qc_fill_gaps(), shared with T_QC_10_interpolate
-  res <- qc_fill_gaps(X, previous_flag, maxgap, refill_flagged)
+  res <- qc_fill_gaps(X, previous_flag, maxgap, refill_flagged, tt = as.numeric(zoo::index(x)),
+                      step_sec = input$qc_info$dataset_humidity$time_step_sec)
 
   # write the matrices back into the xts shells, keeping index and column names
   if (res$n_gap + res$n_ref > 0) {
@@ -68,7 +67,7 @@ RH_QC_8_interpolate <- function(input,
   #-------------------------------------------------------------------------------
   # report and hand the pair on to the next level
 
-  # honest report of what was ADDED
+  # report what was added
   if (isTRUE(verbose))
     message(sprintf("RH8 interpolation (maxgap %d): %d gaps filled (code 50), %d QC removals refilled (codes 50+level)",
                     maxgap, res$n_gap, res$n_ref))

@@ -19,14 +19,16 @@
 #' Two guards apply: a station-month needs `min_days` days with at least
 #' `min_obs_per_day` values, and - by default - its sample must span more
 #' than one calendar year. A single-season campaign is therefore refused,
-#' station-month by station-month, and says so. Set
-#' `require_multi_year = FALSE` to override.
+#' station-month by station-month, and says so. To override, set
+#' `require_multi_year = FALSE` together with a `min_days` one month can
+#' reach (28 at most); with `min_days = 60` February needs a third year.
 #'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param ext_lim_factor Multiplier m on the IQR of the daily extremes.
 #' @param min_days Minimum number of judged days a station-month needs.
-#' @param min_obs_per_day Valid values a day needs to contribute an extreme
-#'   (72 = half of a 10-minute day).
+#' @param min_obs_per_day Valid values a day needs to contribute an extreme;
+#'   NULL (default) takes half a day at the time step of the data (72 at
+#'   10 minutes).
 #' @param require_multi_year Only judge a station-month whose sample spans
 #'   more than one calendar year.
 #' @param verbose Report the tally and the refusals.
@@ -40,7 +42,7 @@
 #' @examples
 #' \dontrun{
 #' res <- T_QC_5_climatic_outliers(res)                             # honest self-skip
-#' res <- T_QC_5_climatic_outliers(res, require_multi_year = FALSE) # force it anyway
+#' res <- T_QC_5_climatic_outliers(res, require_multi_year = FALSE, min_days = 25) # force it anyway
 #' }
 #'
 #' @import xts
@@ -49,7 +51,7 @@
 T_QC_5_climatic_outliers <- function(input,
                                      ext_lim_factor = 2.5,
                                      min_days = 60,
-                                     min_obs_per_day = 72,
+                                     min_obs_per_day = NULL,
                                      require_multi_year = TRUE,
                                      verbose = TRUE) {
   #-------------------------------------------------------------------------------
@@ -62,22 +64,25 @@ T_QC_5_climatic_outliers <- function(input,
   #-------------------------------------------------------------------------------
   # validate the parameters, because the caller may set them freely
 
-  # the IQR multiplier must be positive
   if (!is.numeric(ext_lim_factor) || length(ext_lim_factor) != 1 || ext_lim_factor <= 0)
     stop("ext_lim_factor must be a positive number.")
   # quartiles from fewer than ~20 days are noise, not a climatology
   if (!is.numeric(min_days) || length(min_days) != 1 || min_days < 20)
     stop("min_days must be at least 20.")
+  # the values a day needs default to half a day, whatever the time step
+  if (is.null(min_obs_per_day)) {
+    step_sec <- input$qc_info$dataset_temperature$time_step_sec
+    min_obs_per_day <- if (is.finite(step_sec) && step_sec > 0) max(2, ceiling(43200 / step_sec)) else 72
+  }
   # an extreme from a handful of values is not a daily extreme
   if (!is.numeric(min_obs_per_day) || length(min_obs_per_day) != 1 || min_obs_per_day < 2)
     stop("min_obs_per_day must be at least 2.")
 
   #-------------------------------------------------------------------------------
-  # Perform QC Level 5
+  # perform QC level 5
 
-  # plain numeric matrix of the values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
   # calendar day of every time step, in the time zone of the index
   day <- format(zoo::index(x), "%Y-%m-%d")
@@ -86,9 +91,7 @@ T_QC_5_climatic_outliers <- function(input,
   # calendar month and year of every day, for the pooling and the guards
   day_mon <- as.numeric(substr(names(day_rows), 6, 7))
   day_yr  <- as.numeric(substr(names(day_rows), 1, 4))
-  # count across all stations
   n_total <- 0
-  # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
   # per-station coverage: values on days of judged station-months
   n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
@@ -97,9 +100,8 @@ T_QC_5_climatic_outliers <- function(input,
   # the bounds that were applied, one row per judged station-month
   bounds <- list()
 
-  # iterate over all stations (columns): a climatology is site-specific
+  # station by station: a climatology is site-specific
   for (s in colnames(X)) {
-    # extract data vector of this station
     v <- X[, s]
     # daily maxima and minima; NA where the day is too sparse
     ext <- vapply(day_rows, function(rows) {
@@ -108,18 +110,20 @@ T_QC_5_climatic_outliers <- function(input,
       range(z, na.rm = TRUE)
     }, numeric(2))
     tmin <- ext[1, ]; tmax <- ext[2, ]
+    # days on which the station reported anything at all
+    has_val <- vapply(day_rows, function(rows) any(!is.na(v[rows])), logical(1))
     # every calendar month present in the record
     for (mm in sort(unique(day_mon))) {
       # this station's judged days in this month, all years pooled
       sel <- day_mon == mm & !is.na(tmax)
-      # sample size of the pooled month, in days
+      # its size in days, and the number of years it spreads over
       nd <- sum(sel)
-      # over how many distinct years the sample spreads
       years_span <- length(unique(day_yr[sel]))
-      # guards: enough days AND (if required) a genuine multi-year climatology
+      # guards: enough days and (if required) a genuine multi-year climatology
       if (nd < min_days || (require_multi_year && years_span < 2)) {
-        # remember the refusal instead of silently doing nothing
-        if (nd > 0) refused <- c(refused, sprintf("%s/%02d(days=%d,y=%d)", s, mm, nd, years_span))
+        # remember the refusal instead of silently doing nothing - also when
+        # the station reported in that month but no day was dense enough
+        if (any(has_val[day_mon == mm])) refused <- c(refused, sprintf("%s/%02d(days=%d,y=%d)", s, mm, nd, years_span))
         next
       }
       # the outer tails: hot days by the maxima, cold nights by the minima
@@ -140,18 +144,15 @@ T_QC_5_climatic_outliers <- function(input,
         hit[rows] <- !is.na(v[rows]) & ((tmax[d] > hi & v[rows] > hi) | (tmin[d] < lo & v[rows] < lo))
       }
 
-      # combine the verdict with THIS station's column only
+      # only cells that carry no earlier flag
       mask <- hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
-      # how many cells this level objects to in this station-month
       n_found <- sum(mask)
 
-      # apply only if something was found
       if (n_found > 0) {
         # blank the outliers so later levels never see them
         X[mask, s] <- NA
         # record this level's code (5 = level 5, fixed by convention)
         previous_flag[mask, s] <- 5
-        # add the number of new flags to the counters
         n_station[s] <- n_station[s] + n_found
         n_total <- n_total + n_found
       }

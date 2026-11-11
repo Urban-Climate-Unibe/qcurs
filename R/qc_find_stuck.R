@@ -31,7 +31,7 @@ qc_find_stuck <- function(v, width, sd_tol, min_valid, exempt_above = NULL) {
   judged <- rep(FALSE, n)
   # a series shorter than one window, or without enough values to fill one, is never judged
   if (n < width || sum(!is.na(v)) < min_valid) return(list(hit = hit, judged = judged))
-  # rolling variation and valid count of the window ENDING at each point
+  # rolling variation and valid count of the window ending at each point
   sdv <- zoo::rollapply(v, width, function(z) stats::sd(z, na.rm = TRUE), align = "right", fill = NA)
   cnt <- zoo::rollapply(v, width, function(z) sum(!is.na(z)),           align = "right", fill = NA)
   # windows with enough valid values get a verdict
@@ -43,7 +43,7 @@ qc_find_stuck <- function(v, width, sd_tol, min_valid, exempt_above = NULL) {
   }
   # the stuck windows among the judged ones
   stuck <- ok & !is.na(sdv) & sdv <= sd_tol
-  # expand each window end back over its width, BY POSITION; gaps inside a
+  # expand each window end back over its width, by position; gaps inside a
   # window are not points and stay FALSE
   expand <- function(ends) unique(unlist(lapply(ends, function(i) max(1, i - width + 1):i)))
   judged[expand(which(ok))] <- TRUE

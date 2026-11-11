@@ -27,23 +27,38 @@
 #' forest station runs 20 to 50 minutes behind the network (55 in one sunny
 #' week), a station at the lake up to 40, the open reference site 10 to 30
 #' minutes ahead - in both summers, and varying with the weather. The default
-#' `min_lag` is therefore 6 steps, one hour at 10-minute data: the smallest
-#' error a wrong time zone or a missed clock change makes, and above every
-#' site lag seen. A planted hour at a Thun station was found in every full
-#' week from its first to its last. The lag table in the record shows the
-#' site lags all the same. A best lag at the edge of the search range is
-#' reported as `max_lag` and means "at least that".
+#' `min_lag` is therefore one hour (6 steps at 10-minute data): the smallest
+#' error a wrong time zone or a missed clock change makes. A site lag reaches
+#' it in a single week all the same - in Thun and Bern from January 2025 to
+#' November 2026 in 3 of 8634 station-weeks (56, 60 and 68 minutes), never
+#' twice in a row - so it is `min_consecutive_windows` that keeps the sites
+#' out, not the hour alone. A planted hour at a Thun station was found in
+#' every full week from its first to its last. The lag table in the record
+#' shows the site lags all the same. A best lag at the edge of the search
+#' range is reported as `max_lag` and means "at least that".
+#'
+#' Sun on the sensor looks like a wrong clock: a station that reads too warm
+#' on clear mornings warms before the network, and its best lag grows. At one
+#' Thun station it was 55 to 76 minutes over seven weeks of spring 2026
+#' before level 6 had run, and 19 to 40 after level 6 had taken the sunlit
+#' hours out. The runner therefore calls this level last; called on data
+#' level 6 has not seen, it can take such a station for a wrong clock.
 #'
 #' The level needs no metadata, only `min_stations` stations with values on
 #' the same steps. The yardstick of a station is the median of the OTHER
 #' stations, so an offset station does not pull its own reference along.
+#' A window in which at least half of the judged stations show an offset is
+#' judged at no station and listed in `windows_undecided`: the median is then
+#' off itself and cannot say who is right - with three stations, one of them
+#' two hours out makes the other two look an hour out.
 #'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param window_days Length of the windows in calendar days.
-#' @param max_lag Largest lag searched, in steps either way (12 = 2 hours
-#'   at 10-minute data).
+#' @param max_lag Largest lag searched, in steps either way; NULL (default)
+#'   takes two hours at the time step of the data (12 steps at 10 minutes).
 #' @param min_lag Smallest best lag, in steps, that counts as a clock
-#'   offset (6 = one hour at 10-minute data).
+#'   offset; NULL (default) takes one hour at the time step of the data
+#'   (6 steps at 10 minutes).
 #' @param min_consecutive_windows Judged windows in a row with a lag of the
 #'   same sign at or beyond `min_lag` before any of them is objected to.
 #' @param min_valid_frac Share of a window's steps that need a value at the
@@ -59,7 +74,8 @@
 #'   lag of every judged station-window, in steps, is in
 #'   `qc_info$t9_clock_offset$lags` (windows in rows, stations in columns,
 #'   NA = not judged), the objected runs in `episodes` (station, from, to,
-#'   windows, lag_min, r).
+#'   windows, lag_min, r), the windows judged at no station in
+#'   `windows_undecided`.
 #'
 #' @examples
 #' \dontrun{
@@ -72,8 +88,8 @@
 #' @export
 T_QC_9_clock_offset <- function(input,
                                 window_days = 7,
-                                max_lag = 12,
-                                min_lag = 6,
+                                max_lag = NULL,
+                                min_lag = NULL,
                                 min_consecutive_windows = 2,
                                 min_valid_frac = 0.5,
                                 min_cor = 0.7,
@@ -89,21 +105,13 @@ T_QC_9_clock_offset <- function(input,
   #-------------------------------------------------------------------------------
   # validate the parameters, because the caller may set them freely
 
-  # a window is a positive whole number of days
   if (!is.numeric(window_days) || length(window_days) != 1 || window_days < 1 || window_days != round(window_days))
     stop("window_days must be a positive whole number of days.")
-  # the lags are whole numbers of steps, and the smallest must fit in the range
-  if (!is.numeric(max_lag) || length(max_lag) != 1 || max_lag < 1 || max_lag != round(max_lag))
-    stop("max_lag must be a positive whole number of steps.")
-  if (!is.numeric(min_lag) || length(min_lag) != 1 || min_lag < 1 || min_lag > max_lag || min_lag != round(min_lag))
-    stop("min_lag must be a whole number of steps between 1 and max_lag.")
-  # at least one window in a row must be required
-  if (!is.numeric(min_consecutive_windows) || min_consecutive_windows < 1)
-    stop("min_consecutive_windows must be at least 1.")
-  # the coverage is a fraction
+  if (!is.numeric(min_consecutive_windows) || length(min_consecutive_windows) != 1 ||
+      min_consecutive_windows < 1 || min_consecutive_windows != round(min_consecutive_windows))
+    stop("min_consecutive_windows must be a whole number, at least 1.")
   if (!is.numeric(min_valid_frac) || length(min_valid_frac) != 1 || min_valid_frac <= 0 || min_valid_frac > 1)
     stop("min_valid_frac must lie in (0, 1].")
-  # the correlation floor is a correlation
   if (!is.numeric(min_cor) || length(min_cor) != 1 || min_cor < 0 || min_cor >= 1)
     stop("min_cor must lie in [0, 1).")
   # a network median of fewer than three stations is not a yardstick
@@ -123,13 +131,20 @@ T_QC_9_clock_offset <- function(input,
     input$qc_info$t9_clock_offset <- list(n_flagged = 0L, skipped = TRUE, reason = reason)
     return(input)
   }
+  # the lags default to one and two hours, whatever the time step
+  if (is.null(min_lag)) min_lag <- max(1, round(3600 / step_sec))
+  if (is.null(max_lag)) max_lag <- max(1, round(7200 / step_sec))
+  # the lags are whole numbers of steps, and the smallest must fit in the range
+  if (!is.numeric(max_lag) || length(max_lag) != 1 || max_lag < 1 || max_lag != round(max_lag))
+    stop("max_lag must be a positive whole number of steps.")
+  if (!is.numeric(min_lag) || length(min_lag) != 1 || min_lag < 1 || min_lag > max_lag || min_lag != round(min_lag))
+    stop("min_lag must be a whole number of steps between 1 and max_lag.")
 
   #-------------------------------------------------------------------------------
-  # Perform QC Level 9
+  # perform QC level 9
 
-  # plain numeric matrix of the values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
   # the time stamps as seconds, for the lag matching
   tt <- as.numeric(zoo::index(x))
@@ -144,9 +159,7 @@ T_QC_9_clock_offset <- function(input,
   win_to   <- vapply(win_rows, function(rows) day[rows[length(rows)]], character(1))
   # the steps a full window holds
   full_n <- window_days * 86400 / step_sec
-  # count across all stations
   n_total <- 0
-  # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
   # per-station coverage: values in windows that got a verdict
   n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
@@ -164,9 +177,8 @@ T_QC_9_clock_offset <- function(input,
 
   # first pass: the best lag of every window at every station
   for (s in colnames(X)) {
-    # extract data vector of this station
     v <- X[, s]
-    # the yardstick: the median of the OTHER stations at every step, NA
+    # the yardstick: the median of the other stations at every step, NA
     # where too few stations report. Leaving the station out matters in a
     # small network, where an offset station would otherwise pull the
     # median's timing along
@@ -203,26 +215,33 @@ T_QC_9_clock_offset <- function(input,
     }
   }
 
+  # the network rule: when at least half of the judged stations show an offset
+  # in the same window, the median is off itself and cannot say who is right.
+  # Nobody is judged in such a window
+  n_jud <- rowSums(!is.na(LAG))
+  n_off <- rowSums(abs(round(LAG)) >= min_lag, na.rm = TRUE)
+  undecided <- n_off > 0 & n_off >= 0.5 * n_jud
+  # those windows, so a zero-flag run is not a clean bill
+  windows_undecided <- sprintf("%s..%s", win_from[undecided], win_to[undecided])
+
   # the objected runs, one row each
   episodes <- list()
 
   # second pass: per station, only runs of offset windows long enough count
   for (s in colnames(X)) {
-    # extract data vector of this station
     v <- X[, s]
     # the judged windows of this station, in the order of the record
-    jw <- which(!is.na(LAG[, s]))
+    jw <- which(!is.na(LAG[, s]) & !undecided)
     # every value in a judged window counts as judged
     n_judged[s] <- sum(!is.na(v[unlist(win_rows[jw])]))
     if (!length(jw)) next
     # the verdict per judged window: the sign of an offset that rounds to
     # min_lag or beyond, 0 otherwise - a run must keep its sign
     verdict <- ifelse(abs(round(LAG[jw, s])) >= min_lag, sign(LAG[jw, s]), 0)
-    # run-length encode over the JUDGED windows only
+    # run-length encode over the judged windows only
     r <- rle(verdict)
-    # end index of every run
+    # end and start index of every run
     ends <- cumsum(r$lengths)
-    # start index of every run
     starts <- ends - r$lengths + 1
     # collect the windows of every offset run that is long enough
     flag_wins <- integer(0)
@@ -247,18 +266,15 @@ T_QC_9_clock_offset <- function(input,
     hit[unlist(win_rows[flag_wins])] <- TRUE
     hit <- hit & !is.na(v)
 
-    # combine the verdict with THIS station's column only
+    # only cells that carry no earlier flag
     mask <- hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
-    # how many cells this level objects to at this station
     n_found <- sum(mask)
 
-    # apply only if something was found
     if (n_found > 0) {
       # blank the offset windows so later levels never see them
       X[mask, s] <- NA
       # record this level's code (9 = level 9, fixed by convention)
       previous_flag[mask, s] <- 9
-      # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found
     }
@@ -279,9 +295,9 @@ T_QC_9_clock_offset <- function(input,
 
   # report so a zero-hit run is visibly a run, not a skip
   if (isTRUE(verbose)) {
-    message(sprintf("T9 clock offset (|lag| >= %d steps = %g min, same sign over >= %d windows of %d days): %d flagged, %d episode(s), %d of %d station-windows judged",
+    message(sprintf("T9 clock offset (|lag| >= %d steps = %g min, same sign over >= %d windows of %d days): %d flagged, %d episode(s), %d of %d station-windows judged, %d window(s) undecided",
                     min_lag, min_lag * step_sec / 60, min_consecutive_windows, window_days,
-                    n_total, nrow(episodes), sum(!is.na(LAG)), length(LAG)))
+                    n_total, nrow(episodes), sum(!is.na(LAG[!undecided, , drop = FALSE])), length(LAG), sum(undecided)))
   }
 
   # write the updated matrices back and append this level under its own name
@@ -298,6 +314,7 @@ T_QC_9_clock_offset <- function(input,
                                         min_cor                 = min_cor,
                                         min_stations            = min_stations,
                                         lags                    = LAG,
-                                        episodes                = episodes)
+                                        episodes                = episodes,
+                                        windows_undecided       = windows_undecided)
   input
 }

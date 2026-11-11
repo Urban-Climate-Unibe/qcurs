@@ -8,7 +8,7 @@ biel_tidy <- function() {
                   sep = ";", dec = ".", stringsAsFactors = FALSE)
 }
 
-# the tidy file pivoted to wide IN THE SCRIPT, as qc_as_xts() expects:
+# the tidy file pivoted to wide in the script, as qc_as_xts() expects:
 # one time column plus one column per logger
 biel_wide <- function() {
   wide <- stats::reshape(biel_tidy(), idvar = "time", timevar = "station", direction = "wide")
@@ -19,7 +19,7 @@ biel_wide <- function() {
 
 biel_meta <- function() {
   # Read via readLines + iconv rather than a UTF-8 connection: read.csv() on a
-  # UTF-8 connection dies with "invalid input" under a C locale, which is what
+  # UTF-8 connection fails with "invalid input" under a C locale, which is what
   # R CMD check and many CI runners use. Bytes first, encoding second.
   path <- system.file("extdata", "metadata.csv", package = "qcurs")
   txt  <- readLines(path, warn = FALSE)
@@ -46,9 +46,10 @@ biel_chain <- function() {
     res <- T_QC_3_time_consistency(res, verbose = FALSE)
     res <- T_QC_4_stuck_values(res, verbose = FALSE)
     res <- T_QC_5_climatic_outliers(res, verbose = FALSE)
+    # the runner's order: level 8 before the neighbour comparisons, level 9 last
+    res <- T_QC_8_diurnal_range(res, verbose = FALSE)
     res <- T_QC_6_spatial_consistency(res, metadata = md, verbose = FALSE)
     res <- T_QC_7_spatiotemporal_consistency(res, metadata = md, verbose = FALSE)
-    res <- T_QC_8_diurnal_range(res, verbose = FALSE)
     res <- T_QC_9_clock_offset(res, verbose = FALSE)
     res <- T_QC_10_interpolate(res, verbose = FALSE)
     .chain_cache$x <- x

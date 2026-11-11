@@ -20,9 +20,9 @@
 #' @noRd
 qc_match_grid <- function(x, src) {
   if (!inherits(src, "xts") || is.null(colnames(src))) return(NULL)
-  # loggers present in BOTH series, by name
+  # loggers present in both series, by name
   loggers <- intersect(colnames(x), colnames(src))
-  # for every target time stamp: the row of the SAME stamp in the source, or NA
+  # for every target time stamp: the row of the same stamp in the source, or NA
   row_s <- match(as.numeric(zoo::index(x)), as.numeric(zoo::index(src)))
   ok <- !is.na(row_s)
   if (!length(loggers) || !any(ok)) return(NULL)

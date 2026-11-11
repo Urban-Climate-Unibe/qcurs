@@ -16,8 +16,9 @@
 #' them); the ceiling that resulted is recorded per station
 #' (`sat_ceiling`). A sensor stuck at ONE
 #' value for the whole record has that value as its ceiling and escapes
-#' here; level 5 catches it, because such a sensor no longer follows its own
-#' temperature. `sat_quantile = NULL` leaves only the fixed `sat_max`.
+#' here; level 5 catches it on every day with a temperature cycle, because
+#' such a sensor no longer follows its own temperature. `sat_quantile = NULL`
+#' leaves only the fixed `sat_max`.
 #'
 #' The window is also the detection delay (see `T_QC_4_stuck_values()`).
 #'
@@ -71,14 +72,12 @@ RH_QC_4_stuck_values <- function(input,
   # a negative tolerance would switch the test off silently
   if (!is.numeric(sd_tol) || length(sd_tol) != 1 || sd_tol < 0)
     stop("sd_tol must be zero or a positive variation.")
-  # the saturation exemption must lie inside the physical range
   if (!is.numeric(sat_max) || length(sat_max) != 1 || sat_max <= 0 || sat_max > 100)
     stop("sat_max must lie in (0, 100].")
-  # the station rule needs a quantile that is a quantile; NULL means off
+  # NULL switches the station rule off
   if (!is.null(sat_quantile) && (!is.numeric(sat_quantile) || length(sat_quantile) != 1 ||
                                  sat_quantile <= 0 || sat_quantile >= 1))
     stop("sat_quantile must lie in (0, 1), or be NULL.")
-  # the population guard must be a usable fraction
   if (!is.numeric(min_valid_frac) || length(min_valid_frac) != 1 || min_valid_frac <= 0 || min_valid_frac > 1)
     stop("min_valid_frac must be a fraction in (0, 1].")
 
@@ -89,27 +88,22 @@ RH_QC_4_stuck_values <- function(input,
   min_valid <- max(2L, ceiling(min_valid_frac * width))
 
   #-------------------------------------------------------------------------------
-  # Perform RH QC Level 4
+  # perform RH QC level 4
 
-  # plain numeric matrix of the values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
-  # count across all stations
   n_total <- 0
-  # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
   # per-station coverage: cells inside at least one judged window
   n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
   # the exemption threshold that applied at each station
   sat_ceiling <- stats::setNames(rep(sat_max, ncol(X)), colnames(X))
 
-  # iterate over all stations (columns)
   for (s in colnames(X)) {
-    # extract data vector of this station
     v <- X[, s]
     # the station's own ceiling: a window at the top of its range is
-    # saturation for THIS sensor, whatever the fixed limit says
+    # saturation for this sensor, whatever the fixed limit says
     if (!is.null(sat_quantile) && any(!is.na(v)))
       sat_ceiling[s] <- min(sat_max, stats::quantile(v, sat_quantile, na.rm = TRUE, names = FALSE))
     # the search itself lives in qc_find_stuck(), shared with T_QC_4; the
@@ -117,18 +111,15 @@ RH_QC_4_stuck_values <- function(input,
     st <- qc_find_stuck(v, width, sd_tol, min_valid, exempt_above = sat_ceiling[[s]])
     n_judged[s] <- sum(st$judged & !is.na(v))
 
-    # combine the verdict with THIS station's column only
+    # only cells that carry no earlier flag
     mask <- st$hit & !is.na(v) & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
-    # how many cells this level objects to at this station
     n_found <- sum(mask)
 
-    # apply only if something was found
     if (n_found > 0) {
       # blank the stuck stretch so later levels never see it
       X[mask, s] <- NA
       # record this level's code (4 = level 4, fixed by convention)
       previous_flag[mask, s] <- 4
-      # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found
     }

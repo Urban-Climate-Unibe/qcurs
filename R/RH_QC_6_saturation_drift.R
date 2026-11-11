@@ -18,11 +18,12 @@
 #'
 #' The level can only judge when the network does reach `network_min`. The
 #' low-cost elements of the Thun network never do - their median tops out at
-#' 85 percent while MeteoSwiss Thun reads 99 - and on such a network the
-#' level skips itself and says so (`skipped`, with the network's maximum in
-#' the record) instead of reporting a clean run. `network_min` and
-#' `station_max` then have to be set to what these sensors reach, with the
-#' station ceilings of level 4 (`sat_ceiling`) as the guide.
+#' 85 percent in summer and at 89 over the whole year, while MeteoSwiss Thun
+#' reads 99 - and on such a network the level skips itself and says so
+#' (`skipped`, with the network's maximum in the record) instead of reporting
+#' a clean run. `network_min` and `station_max` then have to be set to what
+#' these sensors reach, with the station ceilings of level 4 (`sat_ceiling`)
+#' as the guide.
 #'
 #' @param input xts of relative humidity, or list from a previous QC level.
 #' @param network_min Network median above which a step counts as saturated.
@@ -73,22 +74,19 @@ RH_QC_6_saturation_drift <- function(input,
   # at least one saturated observation is needed to judge at all
   if (!is.numeric(min_hits) || min_hits < 1)
     stop("min_hits must be at least 1.")
-  # segments must have a positive length
   if (!is.numeric(window_days) || window_days <= 0)
     stop("window_days must be a positive number of days.")
   
   #-------------------------------------------------------------------------------
   # find the saturated time steps of the network, once
   
-  # plain numeric matrix of the values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
-  # how many stations report at each time step
+  # stations reporting and the network median at each time step
   valid_per_step <- rowSums(!is.na(X))
-  # the network median at each time step
   net_med <- apply(X, 1, stats::median, na.rm = TRUE)
-  # a step is "saturated" when enough stations report AND their median is at the top
+  # a step is "saturated" when enough stations report and their median is at the top
   is_sat <- valid_per_step >= min_stations & !is.na(net_med) & net_med >= network_min
   # the highest the network median got, with enough stations reporting
   network_max <- suppressWarnings(max(net_med[valid_per_step >= min_stations], na.rm = TRUE))
@@ -111,24 +109,18 @@ RH_QC_6_saturation_drift <- function(input,
   sat_by_seg <- split(which(is_sat), seg[is_sat])
 
   #-------------------------------------------------------------------------------
-  # Perform RH QC Level 6
+  # perform RH QC level 6
 
-  # count across all stations
   n_total <- 0
-  # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
   # per-station coverage: values at saturated steps of station-segments with a verdict
   n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
 
-  # iterate over all stations (columns)
   for (s in colnames(X)) {
-    # extract data vector of this station
     v <- X[, s]
-    # verdict per cell, FALSE until proven otherwise
     hit <- rep(FALSE, length(v))
     # judge segment by segment: a drift is a property of a period, not of the record
     for (sat_steps in sat_by_seg) {
-      # the station's values during the saturation episodes
       vs <- v[sat_steps]
       # the evidence cells: observed values at saturated steps
       obs <- sat_steps[!is.na(vs)]
@@ -142,18 +134,15 @@ RH_QC_6_saturation_drift <- function(input,
       hit[obs] <- TRUE
     }
 
-    # combine the verdict with THIS station's column only
+    # only cells that carry no earlier flag
     mask <- hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
-    # how many cells this level objects to at this station
     n_found <- sum(mask)
     
-    # apply only if something was found
     if (n_found > 0) {
       # blank the drifted values so later levels never see them
       X[mask, s] <- NA
       # record this level's code (6 = level 6, fixed by convention)
       previous_flag[mask, s] <- 6
-      # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found
     }

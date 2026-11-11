@@ -6,7 +6,7 @@
 #' masking - the published order let zero-weight stations occupy the k slots
 #' and displace compatible ones. Both forest spellings count as forest.
 #'
-#' Validates and aligns the metadata on the way: the four required columns,
+#' Validates and aligns the metadata on the way: the required columns,
 #' numeric complete coordinates, unique IDs. Stations without a metadata row
 #' or without a landuse are reported with a warning, never dropped silently.
 #'
@@ -20,7 +20,8 @@
 #' Used by `T_QC_6_spatial_consistency()` and
 #' `RH_QC_7_dewpoint_consistency()`, so the network geometry exists once.
 #'
-#' @param metadata Data frame with ID, LAT, LON, Landuse.
+#' @param metadata Data frame with ID, LAT, LON, Landuse (no Landuse needed
+#'   with `landuse_mode = "none"`).
 #' @param stations Station names to build the network from (those present
 #'   in the data); only the ones with a metadata row are used.
 #' @param radius_m Maximum neighbour distance in metres.
@@ -44,15 +45,17 @@ qc_neighbour_weights <- function(metadata, stations, radius_m, k_neighbours,
   landuse_mode <- match.arg(landuse_mode)
   if (!is.numeric(max_elev_diff) || length(max_elev_diff) != 1 || max_elev_diff <= 0)
     stop("max_elev_diff must be a positive number of metres.")
-  # tolerate tibbles and friends
+  # accept tibbles and other data frame classes
   md <- as.data.frame(metadata)
-  # the four columns the geometry relies on
-  need <- c("ID", "LAT", "LON", "Landuse")
+  # the columns the geometry relies on; the landuse only where it is used
+  need <- c("ID", "LAT", "LON", if (landuse_mode != "none") "Landuse")
   if (!all(need %in% names(md)))
     stop(sprintf("Metadata must contain the columns %s.", paste(need, collapse = ", ")))
   # duplicated IDs would make the match ambiguous
   if (anyDuplicated(md$ID)) stop("Metadata contains duplicated IDs.")
-  # only stations present in BOTH the data and the metadata can be used
+  # a landuse read as a factor would break the text comparisons below
+  if ("Landuse" %in% names(md)) md$Landuse <- as.character(md$Landuse)
+  # only stations present in both the data and the metadata can be used
   ids <- intersect(stations, md$ID)
   # stations without a metadata row can never be evaluated - say so once
   missing_md <- setdiff(stations, md$ID)
@@ -76,12 +79,12 @@ qc_neighbour_weights <- function(metadata, stations, radius_m, k_neighbours,
 
   # pairwise distance matrix in metres, NA diagonal (validates the coordinates)
   D <- qc_distance_matrix(md)
-  # Gaussian bandwidth: median pairwise distance of the DATA-BEARING network
+  # Gaussian bandwidth: median pairwise distance of the data-bearing network
   sigma_d <- stats::median(D, na.rm = TRUE)
   # equation (2), distance part; the diagonal becomes weight 0
   W <- exp(-(D^2) / (2 * sigma_d^2)); W[is.na(W)] <- 0
 
-  # the green classes - BOTH forest spellings
+  # the green classes - both forest spellings
   veg <- c("Vegetated Areas", "Forest", "Forests")
   lu <- as.character(md$Landuse)
   # pairwise landuse factor lambda; "none" treats every pair as compatible
@@ -104,17 +107,17 @@ qc_neighbour_weights <- function(metadata, stations, radius_m, k_neighbours,
     W[!is.na(dz) & dz > max_elev_diff] <- 0
   }
 
-  # the k-nearest cap, in the FIXED order: among the compatible stations only
+  # the k-nearest cap, in the fixed order: among the compatible stations only
   for (i in seq_len(ns)) {
-    # candidates = landuse-compatible AND within the radius
+    # candidates = landuse-compatible and within the radius
     cand <- which(W[i, ] > 0 & !is.na(D[i, ]) & D[i, ] <= radius_m)
     # nothing compatible in range: this station gets no support at all
     if (!length(cand)) { W[i, ] <- 0; next }
-    # keep the k nearest AMONG the compatible candidates
+    # keep the k nearest among the compatible candidates
     keep <- cand[order(D[i, cand])][seq_len(min(k_neighbours, length(cand)))]
     W[i, setdiff(seq_len(ns), keep)] <- 0
   }
-  # belt and braces: nothing beyond the radius ever keeps weight
+  # safeguard: nothing beyond the radius ever keeps weight
   W[!is.na(D) & D > radius_m] <- 0
 
   list(ids = ids, W = W, sigma_d = sigma_d, elevation_used = elevation_used)

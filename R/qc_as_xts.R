@@ -37,13 +37,10 @@ qc_as_xts <- function(x,
   #-------------------------------------------------------------------------------
   # the table itself
 
-  # only data frames (or tibbles) are accepted
   if (!is.data.frame(x))
     stop("x must be a data frame. Read the file in your script (e.g. read.csv), check it, then pass the result.")
-  # There must be one time column plus at least one logger column
   if (ncol(x) < 2)
     stop("x needs a time column and at least one logger column.")
-  # every column needs a unique, non-empty name
   nm <- names(x)
   if (anyNA(nm) || any(!nzchar(nm)))
     stop("Every column needs a non-empty name.")
@@ -59,16 +56,13 @@ qc_as_xts <- function(x,
   if (length(time_col) != 1)
     stop("time_col must be ONE column (name or a positive natural number).")
   if (is.numeric(time_col)) {
-    # check whether the input is a positive natural number and within the range
     if (time_col != round(time_col) || time_col < 1 || time_col > ncol(x))
       stop(sprintf("time_col = %s is not a column number between 1 and %d.", time_col, ncol(x)))
-    # assign the exact column name of the time column
     tc <- nm[time_col]
   } else if (is.character(time_col)) {
     # a column name: exact match, case-sensitive
     if (!time_col %in% nm)
       stop(sprintf("time_col '%s' not found. Columns are: %s", time_col, paste(nm, collapse = ", ")))
-    # assign the exact column name of the time column
     tc <- time_col
   } else {
     stop("time_col must be a column name or a column number.")
@@ -77,20 +71,18 @@ qc_as_xts <- function(x,
   #-------------------------------------------------------------------------------
   # the time stamps: parsed with exactly the format the caller gives
 
-  # extract the time column
   tv <- x[[tc]]
-  # true/false
+  # a POSIXct column is taken as it is; anything else is parsed
   was_posixct <- inherits(tv, "POSIXct")
   if (!was_posixct)
     tv <- as.POSIXct(as.character(tv), format = time_format, tz = tz)
   # every stamp must exist - a POSIXct column can carry NA too, so this check
-  # sits OUTSIDE the parsing branch; name the first one that is missing
+  # sits outside the parsing branch; name the first one that is missing
   if (anyNA(tv)) {
     bad <- which(is.na(tv))
     stop(sprintf("%d time stamp(s) missing or not matching time_format '%s' (first: row %d, '%s').",
                  length(bad), time_format, bad[1], as.character(x[[tc]][bad[1]])))
   }
-  # duplicated stamps are always an error.
   if (anyDuplicated(tv)) {
     d <- which(duplicated(tv))
     stop(sprintf("%d duplicated time stamp(s) (first: row %d, %s). If the raw stamps differ, time_format drops part of them.",
@@ -100,9 +92,8 @@ qc_as_xts <- function(x,
   #-------------------------------------------------------------------------------
   # the logger columns: everything else, and all of it numeric
 
-  # take all column names except the time column
   loggers <- setdiff(nm, tc)
-  # check whether they are numeric
+  # an all-NA logical column counts as numeric: an empty logger
   ok <- vapply(x[loggers], function(v) is.numeric(v) || (is.logical(v) && all(is.na(v))), logical(1))
   if (!all(ok))
     stop(sprintf("Logger column(s) not numeric: %s. Decimal comma? Use read.csv(dec = \",\"). A text column? Remove it in your script.",
@@ -116,7 +107,6 @@ qc_as_xts <- function(x,
 
   # xts() sorts by time; say so if the input was not in order (e.g. appended files)
   resorted <- is.unsorted(tv)
-  # the xts the chain works on
   out <- xts::xts(m, order.by = tv)
   # loggers without a single value (installed later, dead, wrong column)
   empty <- colnames(m)[colSums(!is.na(m)) == 0]
@@ -133,7 +123,7 @@ qc_as_xts <- function(x,
               pct_missing   = round(100 * mean(is.na(m)), 1),
               empty_loggers = empty,
               resorted      = resorted)
-  # the record travels WITH the xts: the first QC level moves it into
+  # the record travels with the xts: the first QC level moves it into
   # qc_info$conversion_<what>, next to qc_info$dataset_<what>
   xts::xtsAttributes(out) <- list(qc_conversion = rec)
 

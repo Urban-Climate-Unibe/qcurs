@@ -53,11 +53,13 @@ qc_check_result <- function(res) {
 #' @export
 qc_plot_timeline <- function(res, station = NULL, main = NULL) {
   qc_check_result(res)
+  # level code per cell, for one station or for the whole network
   L <- qc_level_codes(res)
   if (!is.null(station)) {
     if (!station %in% colnames(L)) stop(sprintf("Station '%s' is not in the result.", station))
     L <- L[, station, drop = FALSE]
   }
+  # the calendar days of the record and the levels that objected to anything
   day <- as.Date(format(zoo::index(res$qc_data_flagged), "%Y-%m-%d"))
   days <- sort(unique(day))
   labels <- qc_level_labels(res)
@@ -65,8 +67,10 @@ qc_plot_timeline <- function(res, station = NULL, main = NULL) {
   # flags per day and level; an empty matrix when nothing was objected to
   tab <- matrix(0, nrow = length(days), ncol = length(codes), dimnames = list(as.character(days), codes))
   for (j in seq_along(codes)) tab[, j] <- rowsum(as.numeric(rowSums(L == codes[j], na.rm = TRUE)), day)[, 1]
+  # the table handed back: one row per day and level
   out <- data.frame(day = rep(days, times = length(codes)), level = rep(labels[as.character(codes)], each = length(days)),
                     n = as.vector(tab), stringsAsFactors = FALSE)
+  # an empty frame first, then one line per level
   cols <- qc_level_colours()
   plot(days, if (length(codes)) tab[, 1] else rep(0, length(days)), type = "n",
        ylim = c(0, max(1, tab)), xlab = "", ylab = "flags per day",
@@ -112,11 +116,21 @@ qc_plot_levels <- function(res, by = c("level", "station"), main = NULL) {
   labels <- qc_level_labels(res)
   cols <- qc_level_colours()
   if (by == "level") {
+    # by level: flagged and judged values, summed over the stations
     s <- qc_summary(res)
+    # no level left a record (only the interpolation ran): nothing to draw
+    if (!nrow(s)) {
+      graphics::plot.new(); graphics::title(main = if (is.null(main)) "Flags per level" else main)
+      graphics::text(0.5, 0.5, "no level judged")
+      return(invisible(data.frame(level = character(0), flagged = integer(0), judged = integer(0),
+                                  share = numeric(0), stringsAsFactors = FALSE)))
+    }
+    # one row per level, in the order the levels ran
     agg <- do.call(rbind, lapply(split(s, factor(s$level, levels = unique(s$level))), function(z)
       data.frame(level = z$level[1], flagged = sum(z$flagged), judged = sum(z$judged), stringsAsFactors = FALSE)))
     agg$share <- ifelse(agg$judged > 0, 100 * agg$flagged / agg$judged, NA)
     rownames(agg) <- NULL
+    # one bar per level, labelled with its count and its share of the judged values
     codes <- names(labels)[match(agg$level, labels)]
     op <- graphics::par(mar = c(11, 4, 3, 1)); on.exit(graphics::par(op))
     bp <- graphics::barplot(agg$flagged, names.arg = agg$level, las = 2, col = cols[codes],
@@ -130,12 +144,15 @@ qc_plot_levels <- function(res, by = c("level", "station"), main = NULL) {
   # by station: share of each station's observed values objected to, per level
   n_obs <- colSums(!is.na(L))
   codes <- sort(unique(L[!is.na(L) & L > 0]))
-  M <- sapply(colnames(L), function(st) sapply(codes, function(k) 100 * sum(L[, st] == k, na.rm = TRUE) / max(1, n_obs[st])))
-  M <- matrix(M, nrow = length(codes), dimnames = list(labels[as.character(codes)], colnames(L)))
+  # a clean result: say so, and hand back an empty table of the right shape
   if (!length(codes)) {
     graphics::plot.new(); graphics::title(main = if (is.null(main)) "Flags per station" else main)
-    graphics::text(0.5, 0.5, "no flags"); return(invisible(M))
+    graphics::text(0.5, 0.5, "no flags")
+    return(invisible(matrix(numeric(0), nrow = 0, ncol = ncol(L), dimnames = list(character(0), colnames(L)))))
   }
+  # levels x stations, the stations ordered by their total share
+  M <- sapply(colnames(L), function(st) sapply(codes, function(k) 100 * sum(L[, st] == k, na.rm = TRUE) / max(1, n_obs[st])))
+  M <- matrix(M, nrow = length(codes), dimnames = list(labels[as.character(codes)], colnames(L)))
   ord <- order(colSums(M))
   op <- graphics::par(mar = c(4, 8, 3, 1)); on.exit(graphics::par(op))
   graphics::barplot(M[, ord, drop = FALSE], horiz = TRUE, las = 1, col = cols[as.character(codes)],
@@ -173,6 +190,7 @@ qc_plot_calendar <- function(res, level = NULL, main = NULL) {
   qc_check_result(res)
   L <- qc_level_codes(res)
   labels <- qc_level_labels(res)
+  # the cells that count: those of one level, or of any
   if (!is.null(level)) {
     if (!level %in% labels) stop(sprintf("level must be one of: %s", paste(labels, collapse = ", ")))
     code <- as.integer(names(labels)[labels == level])
@@ -180,6 +198,8 @@ qc_plot_calendar <- function(res, level = NULL, main = NULL) {
   } else {
     hit <- L > 0
   }
+  # per day and station, the share of the observed values that were hit;
+  # NA where nothing was observed
   day <- as.Date(format(zoo::index(res$qc_data_flagged), "%Y-%m-%d"))
   days <- sort(unique(day))
   obs <- rowsum((!is.na(L)) * 1, day)
@@ -240,22 +260,31 @@ qc_plot_calendar <- function(res, level = NULL, main = NULL) {
 qc_plot_station <- function(res, station, raw = NULL, from = NULL, to = NULL, main = NULL) {
   qc_check_result(res)
   if (!station %in% colnames(res$qc_data)) stop(sprintf("Station '%s' is not in the result.", station))
+  # the cleaned series, its flags and, if given, the raw series of this station
   cln <- res$qc_data[, station]
   flg <- res$qc_data_flagged[, station]
   rw  <- if (!is.null(raw) && station %in% colnames(raw)) raw[, station] else NULL
-  win <- if (!is.null(from)) paste0(from, if (!is.null(to)) paste0("/", to) else "") else NULL
+  # `to` alone is a window too: everything up to there
+  win <- if (!is.null(from) || !is.null(to)) paste0(from, if (!is.null(to)) paste0("/", to)) else NULL
   if (!is.null(win)) { cln <- cln[win]; flg <- flg[win]; if (!is.null(rw)) rw <- rw[win] }
   if (nrow(cln) == 0) stop("No data in that window.")
+  # level code per value; a refilled removal 50 + N counts as N
   lv <- as.numeric(zoo::coredata(flg)); lv <- ifelse(!is.na(lv) & lv >= 50, lv - 50, lv)
   hit <- !is.na(lv) & lv > 0
   labels <- qc_level_labels(res); cols <- qc_level_colours()
   ti <- zoo::index(cln)
-  yr <- range(c(zoo::coredata(cln), if (!is.null(rw)) zoo::coredata(rw)), na.rm = TRUE)
+  # the value range of everything drawn
+  yr <- suppressWarnings(range(c(zoo::coredata(cln), if (!is.null(rw)) zoo::coredata(rw)), na.rm = TRUE))
+  # nothing left to scale by (every value objected to, no raw series): the ticks still show
+  if (!all(is.finite(yr))) yr <- c(0, 1)
   plot(ti, as.numeric(zoo::coredata(cln)), type = "n", ylim = yr, xlab = "", ylab = "",
        main = if (is.null(main)) station else main)
   grid(nx = NA, ny = NULL, col = "grey90")
+  # the raw series in grey underneath, the cleaned series in black on top
   if (!is.null(rw)) graphics::lines(zoo::index(rw), as.numeric(zoo::coredata(rw)), col = "grey70")
   graphics::lines(ti, as.numeric(zoo::coredata(cln)), col = "black")
+  # the objected values: at their raw value where the raw series is given,
+  # as ticks on the time axis where it is not
   vals <- if (!is.null(rw)) as.numeric(zoo::coredata(rw))[match(ti, zoo::index(rw))] else rep(NA_real_, length(ti))
   codes <- sort(unique(lv[hit]))
   for (k in codes) {
@@ -266,6 +295,7 @@ qc_plot_station <- function(res, station, raw = NULL, from = NULL, to = NULL, ma
   if (length(codes))
     graphics::legend("topleft", legend = labels[as.character(codes)], col = cols[as.character(codes)],
                      pch = if (!is.null(rw)) 16 else NA, lwd = if (!is.null(rw)) NA else 2, bty = "n", cex = 0.75)
+  # the objected values as a table
   invisible(data.frame(time = ti[hit], value = vals[hit], level = unname(labels[as.character(lv[hit])]),
                        stringsAsFactors = FALSE))
 }

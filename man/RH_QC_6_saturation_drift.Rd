@@ -56,11 +56,12 @@ saturated and nothing is caught.
 
 The level can only judge when the network does reach `network_min`. The
 low-cost elements of the Thun network never do - their median tops out at
-85 percent while MeteoSwiss Thun reads 99 - and on such a network the
-level skips itself and says so (`skipped`, with the network's maximum in
-the record) instead of reporting a clean run. `network_min` and
-`station_max` then have to be set to what these sensors reach, with the
-station ceilings of level 4 (`sat_ceiling`) as the guide.
+85 percent in summer and at 89 over the whole year, while MeteoSwiss Thun
+reads 99 - and on such a network the level skips itself and says so
+(`skipped`, with the network's maximum in the record) instead of reporting
+a clean run. `network_min` and `station_max` then have to be set to what
+these sensors reach, with the station ceilings of level 4 (`sat_ceiling`)
+as the guide.
 }
 \examples{
 \dontrun{

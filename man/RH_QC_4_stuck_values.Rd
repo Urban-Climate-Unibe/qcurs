@@ -61,8 +61,9 @@ nights ARE the top of the record, and a stricter quantile cuts through
 them); the ceiling that resulted is recorded per station
 (`sat_ceiling`). A sensor stuck at ONE
 value for the whole record has that value as its ceiling and escapes
-here; level 5 catches it, because such a sensor no longer follows its own
-temperature. `sat_quantile = NULL` leaves only the fixed `sat_max`.
+here; level 5 catches it on every day with a temperature cycle, because
+such a sensor no longer follows its own temperature. `sat_quantile = NULL`
+leaves only the fixed `sat_max`.
 
 The window is also the detection delay (see `T_QC_4_stuck_values()`).
 }

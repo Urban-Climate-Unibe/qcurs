@@ -7,7 +7,7 @@ rh_fixture <- function() {
   mins <- as.numeric(format(ti, "%H")) * 60 + as.numeric(format(ti, "%M"))
   tcyc <- 18 + 5 * sin(2 * pi * (mins - 540) / 1440)             # diurnal temperature
   TT <- sapply(1:4, function(k) tcyc + rnorm(length(ti), 0, 0.3) + (k - 2) * 0.4)
-  # healthy negative coupling, with nights around 89: the network must NOT
+  # healthy negative coupling, with nights around 89: the network must not
   # brush the 95 percent saturation criterion outside the fog day, because one
   # healthy saturated step per segment acquits a drifter by construction
   RH <- 90 - 2.5 * (TT - 13) + matrix(rnorm(length(ti) * 4, 0, 1.5), ncol = 4)
@@ -20,10 +20,10 @@ rh_fixture <- function() {
   RH[500, 2] <- RH[500, 2] + 30
   # E4: fog day 8 (whole network saturated) with S3 drifting at ~80
   fog <- which(day == as.Date("2025-06-08"))
-  # on a real fog day the TEMPERATURE is flat too - otherwise RH5 would rightly
+  # on a real fog day the temperature is flat too - otherwise RH5 would rightly
   # call the pinned humidity "decoupled"; the flat T triggers its trange skip
   TT[fog, ] <- 12 + matrix(rnorm(length(fog) * 4, 0, 0.3), ncol = 4)
-  # the healthy stations sit NEAR-CONSTANT at 97: sd below sd_tol, so without
+  # the healthy stations sit near-constant at 97: sd below sd_tol, so without
   # the saturation exception RH4 would flag the whole fog day
   RH[fog, ] <- 97 + matrix(rnorm(length(fog) * 4, 0, 0.05), ncol = 4)
   RH[fog, 3] <- 80 + rnorm(length(fog), 0, 0.5)
@@ -33,7 +33,7 @@ rh_fixture <- function() {
   # three days, because a single day is a front, not a sensor (RH5 needs two)
   dec <- which(day >= as.Date("2025-06-14") & day <= as.Date("2025-06-16"))
   RH[dec, 2] <- 55 + rnorm(length(dec), 0, 1.5)
-  # E7: dewpoint offset at S1, day 18, midday: a DRY bias of -30 percentage
+  # E7: dewpoint offset at S1, day 18, midday: a dry bias of -30 percentage
   # points. A wet bias saturates against the 100 percent ceiling and barely
   # moves the dewpoint; a dry bias shifts it by several Kelvin.
   off <- which(day == as.Date("2025-06-18"))[61:96]
@@ -57,7 +57,7 @@ test_that("the humidity chain finds every planted error class", {
   FLG <- zoo::coredata(r$qc_data_flagged)
 
   expect_equal(unname(FLG[10, 1]), 2)                        # impossible value flagged
-  expect_equal(unname(zoo::coredata(r$qc_data)[20, 1]), 103) # tolerance value kept AS MEASURED
+  expect_equal(unname(zoo::coredata(r$qc_data)[20, 1]), 103) # tolerance value kept as measured
   expect_equal(unname(FLG[20, 1]), 0)                        # ... and unflagged: QC never alters data
   expect_equal(unname(FLG[500, 2]), 3)                       # spike
   expect_gte(mean(FLG[f$fog, 3] == 6), 0.95)                 # saturation drifter
@@ -77,7 +77,7 @@ test_that("the humidity chain finds every planted error class", {
 test_that("the saturation exception keeps fog days unflagged in RH4", {
   f <- rh_fixture()
   r5 <- RH_QC_4_stuck_values(f$rh, verbose = FALSE)
-  # the fog day is near-constant at 97 but sits ABOVE sat_max: exempt
+  # the fog day is near-constant at 97 but sits above sat_max: exempt
   expect_true(all(zoo::coredata(r5$qc_data_flagged)[f$fog, c(1, 2, 4)] == 0))
 })
 
@@ -216,4 +216,46 @@ test_that("RH6 skips itself audibly when the network never saturates", {
   expect_identical(zoo::coredata(r$qc_data), RH)
   # the level leaves no row in the summary, like every level that could not judge
   expect_false("rh6_saturation_drift" %in% qc_summary(r)$level)
+})
+
+test_that("RH5 calls a humidity that does not move decoupled, and removes the whole day", {
+  set.seed(5)
+  n <- 10 * 144
+  ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = n)
+  h <- as.numeric(ti - ti[1], units = "hours")
+  d <- floor(h / 24) + 1
+  TT <- sapply(1:5, function(j) 18 + 6 * sin(2 * pi * (h - 9) / 24) + 0.3 * j + rnorm(n, 0, 0.15))
+  RH <- 130 - 4 * TT + matrix(rnorm(5 * n, 0, 1), ncol = 5)
+  colnames(TT) <- colnames(RH) <- paste0("S", 1:5)
+  # S3 sits at exactly 60 on days 3 to 8 while its temperature swings by 12 K
+  dead <- d %in% 3:8
+  RH[dead, 3] <- 60
+  tx <- xts::xts(TT, order.by = ti)
+  r <- RH_QC_5_decoupling(xts::xts(RH, order.by = ti), temperature = tx, verbose = FALSE)
+  FLG <- zoo::coredata(r$qc_data_flagged)
+  expect_true(all(FLG[dead, 3] == 5))
+  expect_true(all(FLG[!dead, 3] == 0))
+  expect_true(all(FLG[, -3] == 0))
+  # a dead element with noise, and its temperature has a gap of four hours a
+  # day: the humidity values in that gap belong to the objected day too
+  RH2 <- 130 - 4 * TT + matrix(rnorm(5 * n, 0, 1), ncol = 5)
+  colnames(RH2) <- colnames(TT)
+  RH2[dead, 2] <- 50 + rnorm(sum(dead), 0, 3)
+  TT2 <- TT
+  TT2[dead & as.integer(format(ti, "%H")) %in% 2:5, 2] <- NA
+  r2 <- RH_QC_5_decoupling(xts::xts(RH2, order.by = ti), temperature = xts::xts(TT2, order.by = ti), verbose = FALSE)
+  expect_true(all(zoo::coredata(r2$qc_data_flagged)[dead, 2] == 5))
+  i2 <- r2$qc_info$rh5_decoupling
+  expect_true(all(i2$n_judged_by_station >= i2$n_flagged_by_station))
+})
+
+test_that("RH7 needs min_neighbours + 1 stations, like temperature level 6", {
+  f <- rh_fixture()
+  md2 <- f$md[1:2, ]
+  r <- RH_QC_7_dewpoint_consistency(f$rh[, 1:2], temperature = f$tt[, 1:2], metadata = md2, verbose = FALSE)
+  expect_true(r$qc_info$rh7_dewpoint_consistency$skipped)
+  expect_match(r$qc_info$rh7_dewpoint_consistency$reason, "need at least 3")
+  r1 <- RH_QC_7_dewpoint_consistency(f$rh[, 1:2], temperature = f$tt[, 1:2], metadata = md2,
+                                     min_neighbours = 1, verbose = FALSE)
+  expect_null(r1$qc_info$rh7_dewpoint_consistency$skipped)
 })

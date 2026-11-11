@@ -38,7 +38,7 @@ qc_find_spikes <- function(v, dt, threshold) {
     # from here on the test is applied, whatever it says
     judged[i] <- TRUE
     # off the window median (v[i] is inside the window; one outlier among
-    # 2*dt + 1 values does not move it) AND off the past AND off the future
+    # 2*dt + 1 values does not move it) and off the past and off the future
     hit[i] <- abs(v[i] - stats::median(v[nb], na.rm = TRUE)) >= threshold &&
               abs(v[i] - stats::median(bef)) >= threshold &&
               abs(v[i] - stats::median(aft)) >= threshold

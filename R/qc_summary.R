@@ -10,6 +10,7 @@
 #'
 #' @param res A chain result list (qc_data, qc_data_flagged, qc_info).
 #' @param chain `"t"` or `"rh"`; NULL picks the chain the result belongs to.
+#'   For the records of the other chain `judged_pct` is NA.
 #'
 #' @return Data frame with `level`, `station`, `flagged`, `judged`,
 #'   `judged_pct`, in the order the levels ran.
@@ -28,7 +29,8 @@ qc_summary <- function(res, chain = NULL) {
   if (!is.list(res) || !all(c("qc_data", "qc_data_flagged", "qc_info") %in% names(res)))
     stop("res must be a chain result list with qc_data, qc_data_flagged and qc_info.")
   # the chain this result belongs to: humidity once a humidity level touched it
-  if (is.null(chain)) chain <- if (!is.null(res$qc_info$dataset_humidity)) "rh" else "t"
+  own <- if (!is.null(res$qc_info$dataset_humidity)) "rh" else "t"
+  if (is.null(chain)) chain <- own
   chain <- match.arg(chain, c("t", "rh"))
   # the level records of that chain, in the order they ran
   keys <- grep(paste0("^", chain, "[0-9]+_"), names(res$qc_info), value = TRUE)
@@ -51,7 +53,9 @@ qc_summary <- function(res, chain = NULL) {
   # measured and 50 where a plain gap was filled; everything else was observed
   F <- zoo::coredata(res$qc_data_flagged)
   n_obs <- colSums(!is.na(F) & F != 50)
-  out$judged_pct <- round(100 * out$judged / pmax(n_obs[out$station], 1), 1)
+  # the observed counts are those of the result's own chain; for the records
+  # of the other chain that travelled along there is nothing to divide by
+  out$judged_pct <- if (chain == own) round(100 * out$judged / pmax(n_obs[out$station], 1), 1) else NA_real_
   rownames(out) <- NULL
   out
 }

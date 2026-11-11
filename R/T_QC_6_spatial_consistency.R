@@ -16,7 +16,8 @@
 #' level skips itself, records why, and hands the pair back unchanged.
 #'
 #' @param input xts of temperature, or list from a previous QC level.
-#' @param metadata Data frame with columns ID, LAT, LON, Landuse. Stations are
+#' @param metadata Data frame with columns ID, LAT, LON, Landuse (no Landuse
+#'   needed with `landuse_mode = "none"`). Stations are
 #'   matched to data columns by ID. NULL (default) skips the level.
 #' @param k_sigma Multiplier k on the weighted neighbour spread (paper: 6).
 #' @param abs_floor Absolute floor delta in Kelvin (paper: 3).
@@ -76,6 +77,8 @@ T_QC_6_spatial_consistency <- function(input,
   if (!is.numeric(min_neighbours) || min_neighbours < 1) stop("min_neighbours must be at least 1.")
   if (!is.numeric(k_neighbours) || k_neighbours < min_neighbours)
     stop("k_neighbours must be at least min_neighbours.")
+  if (min_neighbours != round(min_neighbours) || k_neighbours != round(k_neighbours))
+    stop("min_neighbours and k_neighbours must be whole numbers.")
   # no metadata: not an error but a skip - say why, record it, hand the pair back
   if (is.null(metadata)) {
     reason <- "no metadata supplied"
@@ -101,11 +104,10 @@ T_QC_6_spatial_consistency <- function(input,
   }
 
   #-------------------------------------------------------------------------------
-  # Perform QC Level 6
+  # perform QC level 6
 
-  # plain numeric matrix of the values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
   # the test itself lives in qc_find_spatial_outliers(), shared with RH_QC_7
   res <- qc_find_spatial_outliers(X[, net$ids, drop = FALSE], net$W, k_sigma, abs_floor, min_neighbours)
@@ -115,15 +117,12 @@ T_QC_6_spatial_consistency <- function(input,
 
   # only cells that carry no earlier flag
   mask <- hit & (is.na(previous_flag) | previous_flag == 0)
-  # how many cells this level objects to
   n_total <- sum(mask)
-  # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
   # per-station coverage: cells the consensus test was applied to (0 outside the network)
   n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
   n_judged[net$ids] <- colSums(res$judged)
 
-  # apply only if something was found
   if (n_total > 0) {
     # blank the objected values so later levels never see them
     X[mask] <- NA

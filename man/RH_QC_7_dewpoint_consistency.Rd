@@ -25,8 +25,8 @@ RH_QC_7_dewpoint_consistency(
 CLEANED `qc_data` is taken) or a temperature xts with logger names.
 NULL (default) skips the level.}
 
-\item{metadata}{Data frame with columns ID, LAT, LON, Landuse. NULL
-(default) skips the level.}
+\item{metadata}{Data frame with columns ID, LAT, LON, Landuse (no Landuse
+needed with `landuse_mode = "none"`). NULL (default) skips the level.}
 
 \item{k_sigma}{Multiplier k on the weighted neighbour spread of the dewpoint.}
 
@@ -73,8 +73,8 @@ The temperature is matched cell by cell, by exact time stamp and logger
 name (`qc_match_grid()`); a cell without a temperature twin has no dewpoint
 and is not judged. Objections land on the HUMIDITY cells: the dewpoint is
 only the yardstick. Without a usable temperature, without metadata, or
-with fewer than three matched stations the level says so, records it, and
-hands the pair back unchanged so the chain can go on.
+with fewer than `min_neighbours + 1` matched stations the level says so,
+records it, and hands the pair back unchanged so the chain can go on.
 
 The floor is 4 K here, one more than in temperature level 6. Low-cost
 humidity elements do not agree with each other the way temperature

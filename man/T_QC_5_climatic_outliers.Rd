@@ -8,7 +8,7 @@ T_QC_5_climatic_outliers(
   input,
   ext_lim_factor = 2.5,
   min_days = 60,
-  min_obs_per_day = 72,
+  min_obs_per_day = NULL,
   require_multi_year = TRUE,
   verbose = TRUE
 )
@@ -20,8 +20,9 @@ T_QC_5_climatic_outliers(
 
 \item{min_days}{Minimum number of judged days a station-month needs.}
 
-\item{min_obs_per_day}{Valid values a day needs to contribute an extreme
-(72 = half of a 10-minute day).}
+\item{min_obs_per_day}{Valid values a day needs to contribute an extreme;
+NULL (default) takes half a day at the time step of the data (72 at
+10 minutes).}
 
 \item{require_multi_year}{Only judge a station-month whose sample spans
 more than one calendar year.}
@@ -56,13 +57,14 @@ December nights at Thun, 0.9 K below its bound.
 Two guards apply: a station-month needs `min_days` days with at least
 `min_obs_per_day` values, and - by default - its sample must span more
 than one calendar year. A single-season campaign is therefore refused,
-station-month by station-month, and says so. Set
-`require_multi_year = FALSE` to override.
+station-month by station-month, and says so. To override, set
+`require_multi_year = FALSE` together with a `min_days` one month can
+reach (28 at most); with `min_days = 60` February needs a third year.
 }
 \examples{
 \dontrun{
 res <- T_QC_5_climatic_outliers(res)                             # honest self-skip
-res <- T_QC_5_climatic_outliers(res, require_multi_year = FALSE) # force it anyway
+res <- T_QC_5_climatic_outliers(res, require_multi_year = FALSE, min_days = 25) # force it anyway
 }
 
 }

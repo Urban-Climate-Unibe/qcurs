@@ -7,8 +7,8 @@
 T_QC_9_clock_offset(
   input,
   window_days = 7,
-  max_lag = 12,
-  min_lag = 6,
+  max_lag = NULL,
+  min_lag = NULL,
   min_consecutive_windows = 2,
   min_valid_frac = 0.5,
   min_cor = 0.7,
@@ -21,11 +21,12 @@ T_QC_9_clock_offset(
 
 \item{window_days}{Length of the windows in calendar days.}
 
-\item{max_lag}{Largest lag searched, in steps either way (12 = 2 hours
-at 10-minute data).}
+\item{max_lag}{Largest lag searched, in steps either way; NULL (default)
+takes two hours at the time step of the data (12 steps at 10 minutes).}
 
 \item{min_lag}{Smallest best lag, in steps, that counts as a clock
-offset (6 = one hour at 10-minute data).}
+offset; NULL (default) takes one hour at the time step of the data
+(6 steps at 10 minutes).}
 
 \item{min_consecutive_windows}{Judged windows in a row with a lag of the
 same sign at or beyond `min_lag` before any of them is objected to.}
@@ -47,7 +48,8 @@ The chain list with qc_data, qc_data_flagged and qc_info. The best
   lag of every judged station-window, in steps, is in
   `qc_info$t9_clock_offset$lags` (windows in rows, stations in columns,
   NA = not judged), the objected runs in `episodes` (station, from, to,
-  windows, lag_min, r).
+  windows, lag_min, r), the windows judged at no station in
+  `windows_undecided`.
 }
 \description{
 A logger whose clock is wrong - set to the wrong time zone, not adjusted
@@ -78,16 +80,30 @@ Sites lag too, and by more than one would think: on the Thun network a
 forest station runs 20 to 50 minutes behind the network (55 in one sunny
 week), a station at the lake up to 40, the open reference site 10 to 30
 minutes ahead - in both summers, and varying with the weather. The default
-`min_lag` is therefore 6 steps, one hour at 10-minute data: the smallest
-error a wrong time zone or a missed clock change makes, and above every
-site lag seen. A planted hour at a Thun station was found in every full
-week from its first to its last. The lag table in the record shows the
-site lags all the same. A best lag at the edge of the search range is
-reported as `max_lag` and means "at least that".
+`min_lag` is therefore one hour (6 steps at 10-minute data): the smallest
+error a wrong time zone or a missed clock change makes. A site lag reaches
+it in a single week all the same - in Thun and Bern from January 2025 to
+November 2026 in 3 of 8634 station-weeks (56, 60 and 68 minutes), never
+twice in a row - so it is `min_consecutive_windows` that keeps the sites
+out, not the hour alone. A planted hour at a Thun station was found in
+every full week from its first to its last. The lag table in the record
+shows the site lags all the same. A best lag at the edge of the search
+range is reported as `max_lag` and means "at least that".
+
+Sun on the sensor looks like a wrong clock: a station that reads too warm
+on clear mornings warms before the network, and its best lag grows. At one
+Thun station it was 55 to 76 minutes over seven weeks of spring 2026
+before level 6 had run, and 19 to 40 after level 6 had taken the sunlit
+hours out. The runner therefore calls this level last; called on data
+level 6 has not seen, it can take such a station for a wrong clock.
 
 The level needs no metadata, only `min_stations` stations with values on
 the same steps. The yardstick of a station is the median of the OTHER
 stations, so an offset station does not pull its own reference along.
+A window in which at least half of the judged stations show an offset is
+judged at no station and listed in `windows_undecided`: the median is then
+off itself and cannot say who is right - with three stations, one of them
+two hours out makes the other two look an hour out.
 }
 \examples{
 \dontrun{

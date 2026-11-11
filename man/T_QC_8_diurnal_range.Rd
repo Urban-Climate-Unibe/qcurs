@@ -8,7 +8,7 @@ T_QC_8_diurnal_range(
   input,
   range_frac = 0.4,
   min_consecutive_days = 3,
-  min_obs_per_day = 72,
+  min_obs_per_day = NULL,
   min_stations = 3,
   min_network_swing = 2,
   verbose = TRUE
@@ -23,8 +23,9 @@ range of each day, and for the swing of the daily means over a run.}
 \item{min_consecutive_days}{Collapsed days in a row before a run is judged
 at all (3: a swing over two days is just one difference).}
 
-\item{min_obs_per_day}{Valid values a day needs to have its range judged
-(72 = half of a 10-minute day).}
+\item{min_obs_per_day}{Valid values a day needs to have its range judged;
+NULL (default) takes half a day at the time step of the data (72 at
+10 minutes).}
 
 \item{min_stations}{Stations with a range a day needs before it can serve
 as the yardstick; with fewer stations than that in the data the level

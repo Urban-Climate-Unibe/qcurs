@@ -1,8 +1,8 @@
 #' Temperature QC Level 3: time consistency (isolated spikes)
 #'
-#' A value is removed only if it deviates by at least `diff` from the median of
-#' the surrounding window AND from the values before it AND from the values
-#' after it.
+#' A value is removed only if it deviates by at least `threshold` from the
+#' median of the surrounding window AND from the values before it AND from the
+#' values after it.
 #'
 #' @param input xts of temperature, or list from a previous QC level.
 #' @param dt Half window in time steps (default is 3 which means +/-30 min at
@@ -37,47 +37,37 @@ T_QC_3_time_consistency <- function(input,
   #-------------------------------------------------------------------------------
   # validate the parameters, because the caller may set them freely
 
-  # the half window must be a positive whole number of steps
   if (!is.numeric(dt) || length(dt) != 1 || dt < 1 || dt != round(dt))
     stop("dt must be a positive whole number of time steps.")
-  # the threshold must be a positive temperature difference
   if (!is.numeric(threshold) || length(threshold) != 1 || threshold <= 0)
     stop("threshold must be a positive deviation in Kelvin.")
 
   #-------------------------------------------------------------------------------
-  # Perform QC Level 3
+  # perform QC level 3
 
-  # plain numeric matrix of the values (time in rows, stations in columns).
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
-  # count across all stations
   n_total <- 0
-  # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
   # per-station coverage: how many cells the test was applied to
   n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
 
-  # iterate over all stations (columns)
   for (s in colnames(X)) {
-    # extract data vector of this station
     v <- X[, s]
     # the spike search itself lives in qc_find_spikes(), shared with RH_QC_3
     sp <- qc_find_spikes(v, dt, threshold)
     n_judged[s] <- sum(sp$judged)
 
-    # combine the verdict with THIS station's column only
+    # only cells that carry no earlier flag
     mask <- sp$hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
-    # how many cells this level objects to at this station.
     n_found <- sum(mask)
 
-    # apply only if something was found
     if (n_found > 0) {
       # blank the spikes so later levels never see them
       X[mask, s] <- NA
       # record this level's code (3 = level 3, fixed by convention)
       previous_flag[mask, s] <- 3
-      # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found
     }

@@ -12,8 +12,8 @@
 #' name (`qc_match_grid()`); a cell without a temperature twin has no dewpoint
 #' and is not judged. Objections land on the HUMIDITY cells: the dewpoint is
 #' only the yardstick. Without a usable temperature, without metadata, or
-#' with fewer than three matched stations the level says so, records it, and
-#' hands the pair back unchanged so the chain can go on.
+#' with fewer than `min_neighbours + 1` matched stations the level says so,
+#' records it, and hands the pair back unchanged so the chain can go on.
 #'
 #' The floor is 4 K here, one more than in temperature level 6. Low-cost
 #' humidity elements do not agree with each other the way temperature
@@ -30,8 +30,8 @@
 #' @param temperature The temperature run: its result list (preferred; its
 #'   CLEANED `qc_data` is taken) or a temperature xts with logger names.
 #'   NULL (default) skips the level.
-#' @param metadata Data frame with columns ID, LAT, LON, Landuse. NULL
-#'   (default) skips the level.
+#' @param metadata Data frame with columns ID, LAT, LON, Landuse (no Landuse
+#'   needed with `landuse_mode = "none"`). NULL (default) skips the level.
 #' @param k_sigma Multiplier k on the weighted neighbour spread of the dewpoint.
 #' @param abs_floor Absolute floor in Kelvin of dewpoint deviation (4: one
 #'   more than temperature level 6, see above).
@@ -92,6 +92,8 @@ RH_QC_7_dewpoint_consistency <- function(input,
   if (!is.numeric(min_neighbours) || min_neighbours < 1) stop("min_neighbours must be at least 1.")
   if (!is.numeric(k_neighbours) || k_neighbours < min_neighbours)
     stop("k_neighbours must be at least min_neighbours.")
+  if (min_neighbours != round(min_neighbours) || k_neighbours != round(k_neighbours))
+    stop("min_neighbours and k_neighbours must be whole numbers.")
 
   #-------------------------------------------------------------------------------
   # what this level needs from outside: a temperature twin and the geometry.
@@ -106,7 +108,7 @@ RH_QC_7_dewpoint_consistency <- function(input,
   }
   if (is.null(temperature)) return(skip("no temperature supplied"))
   if (is.null(metadata))    return(skip("no metadata supplied"))
-  # the whole chain result: take its CLEANED series
+  # the whole chain result: take its cleaned series
   tx <- temperature
   if (is.list(tx) && !inherits(tx, "xts")) {
     if (!"qc_data" %in% names(tx)) return(skip("temperature list has no 'qc_data'"))
@@ -115,12 +117,13 @@ RH_QC_7_dewpoint_consistency <- function(input,
   # temperature on the humidity grid, by exact time stamp and logger name
   tm <- qc_match_grid(x, tx)
   if (is.null(tm)) return(skip("temperature has no logger name or time stamp in common with the humidity"))
-  # the network: stations with humidity, temperature AND metadata
+  # the network: stations with humidity, temperature and metadata
   net <- qc_neighbour_weights(metadata, tm$loggers, radius_m, k_neighbours, landuse_mode, max_elev_diff)
-  # a consensus over fewer than 3 stations is not a network statement
-  if (length(net$ids) < 3)
-    return(skip(sprintf("only %d station(s) have humidity, temperature and metadata; need at least 3",
-                        length(net$ids))))
+  # without at least min_neighbours + 1 stations the condition can never be
+  # met, the same rule as temperature level 6
+  if (length(net$ids) < min_neighbours + 1)
+    return(skip(sprintf("only %d station(s) have humidity, temperature and metadata; need at least %d",
+                        length(net$ids), min_neighbours + 1)))
 
   #-------------------------------------------------------------------------------
   # the dewpoint field the test runs on
@@ -135,13 +138,12 @@ RH_QC_7_dewpoint_consistency <- function(input,
   }
 
   #-------------------------------------------------------------------------------
-  # Perform RH QC Level 7
+  # perform RH QC level 7
 
-  # plain numeric matrix of the humidity values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
-  # dewpoint per cell of the network, from the CURRENT (cleaned) humidity and
+  # dewpoint per cell of the network, from the current (cleaned) humidity and
   # the matched temperature; NA wherever either is missing
   TD <- dewpoint(tm$M[, net$ids, drop = FALSE], X[, net$ids, drop = FALSE])
   # the test itself lives in qc_find_spatial_outliers(), shared with T_QC_6
@@ -150,17 +152,14 @@ RH_QC_7_dewpoint_consistency <- function(input,
   hit <- matrix(FALSE, nrow(X), ncol(X), dimnames = dimnames(X))
   hit[, net$ids] <- res$hit
 
-  # only cells that carry no earlier flag - the objection lands on the HUMIDITY
+  # only cells that carry no earlier flag - the objection lands on the humidity
   mask <- hit & (is.na(previous_flag) | previous_flag == 0)
-  # how many cells this level objects to
   n_total <- sum(mask)
-  # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
   # per-station coverage: cells the consensus test was applied to (0 outside the network)
   n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
   n_judged[net$ids] <- colSums(res$judged)
 
-  # apply only if something was found
   if (n_total > 0) {
     # blank the objected humidity values so later levels never see them
     X[mask] <- NA

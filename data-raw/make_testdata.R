@@ -1,8 +1,8 @@
 # ------------------------------------------------------------------------------
 # make_testdata.R - builds the QC test dataset from the clean Biel summer 2025
-# campaign by planting DOCUMENTED errors, one per detectable failure class.
+# campaign by planting documented errors, one per detectable failure class.
 #
-# Output is TIDY (long): one row per observation, one column per variable
+# Output is tidy (long): one row per observation, one column per variable
 #   time | station | temperature
 # Missing observations are kept as explicit NA rows, so the time grid of the
 # campaign survives the round trip and a gap stays visibly a gap.
@@ -15,30 +15,30 @@
 #   E1  logger fault code      -45 degC          -> level 1 (gross error)
 #   E2  impossible summer heat  55 degC          -> level 2 (out of range)
 #   E3  isolated spike          value + 15 K     -> level 3 (spike); the gap it
-#                                                  leaves is refilled by level 9
+#                                                  leaves is refilled by level 10
 #                                                  with code 50 + 3 = 53
 #   E4  stuck sensor            40 x 24.00 degC  -> level 4 (stuck values)
 #   E5  night offset            +12 K, 8 hours   -> level 6 (spatial) - planted
-#                                                  at Log_B4, the ONLY Biel
+#                                                  at Log_B4, the only Biel
 #                                                  station with >= 2 compatible
 #                                                  neighbours after the fixed
 #                                                  k-cap; at night so the sum
 #                                                  stays below the seasonal max
 #   E6  indoor episode          5 days 21+-0.2   -> level 8 (diurnal collapse) -
 #                                                  planted at Log_B1 (Water,
-#                                                  ZERO compatible neighbours),
+#                                                  zero compatible neighbours),
 #                                                  the station class level 6
 #                                                  cannot see; noise sd 0.2 so
 #                                                  level 4 does not claim it
 #
-# Levels 5 and 7 are demonstrated on the campaign as HONEST REFUSALS (no
+# Levels 5 and 7 are demonstrated on the campaign as honest refusals (no
 # multi-year climatology / no station with 5 neighbours within 2.5 km); their
-# positive detection paths are proven on synthetic data in test_all_levels.R.
-# The real coldest Biel reading (Log_B7, 7.18 degC) is kept as a NEGATIVE
+# positive detection paths are proven on synthetic data in test-synthetic-positives.R.
+# The real coldest Biel reading (Log_B7, 7.18 degC) is kept as a negative
 # control: it must survive the whole chain unflagged.
 # ------------------------------------------------------------------------------
 
-Sys.setlocale("LC_ALL", "C.UTF-8")           # the container needs this for UTF-8 reads
+Sys.setlocale("LC_ALL", "C.UTF-8")           # UTF-8 reads need this under a C locale
 suppressMessages({library(xts); library(zoo)})
 options(xts_check_TZ = FALSE)
 
@@ -50,7 +50,7 @@ if (!dir.exists(file.path(base, "testdata"))) stop("Run from the package root: t
 raw <- read.csv(file.path(base, "inst/extdata/Biel_summer_2025_raw.csv"),
                 sep = ";", dec = ".", fileEncoding = "UTF-8-BOM", stringsAsFactors = FALSE)
 names(raw)[1] <- "time"
-stopifnot(nrow(raw) == 13308, ncol(raw) == 8)          # verify the read BEFORE using it
+stopifnot(nrow(raw) == 13308, ncol(raw) == 8)          # verify the read before using it
 tv <- as.POSIXct(raw$time, format = "%d.%m.%Y %H:%M", tz = "UTC")
 stopifnot(!anyNA(tv))
 stations <- setdiff(names(raw), "time")
@@ -104,7 +104,7 @@ j <- which.min(raw$Log_B7); stopifnot(abs(raw$Log_B7[j] - 7.18) < 0.01)
 note("N1", "Log_B7", j, "real minimum 7.18 - must NOT be flagged", 0)
 
 # ---- reshape wide -> tidy and write -----------------------------------------
-# one row per (time, station); NA observations are KEPT so the grid stays complete
+# one row per (time, station); NA observations are kept so the grid stays complete
 to_tidy <- function(df, stamps) {
   out <- data.frame(
     time        = rep(format(stamps, "%Y-%m-%d %H:%M:%S"), times = length(stations)),

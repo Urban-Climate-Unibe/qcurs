@@ -11,7 +11,9 @@
 #' name (`qc_match_grid()`, the same rule as levels 1 and 7); a cell without
 #' a temperature twin is not judged. Days with less than `decouple_trange` of
 #' temperature amplitude are skipped, because without a diurnal cycle the
-#' correlation is meaningless - fog days would otherwise be flagged.
+#' correlation is meaningless - fog days would otherwise be flagged. A day on
+#' which the humidity does not move at all while the temperature swings counts
+#' as decoupled.
 #'
 #' The correlation also breaks down on days with an air mass change: a warm
 #' front with rain lifts temperature and humidity together, cold advection
@@ -20,11 +22,16 @@
 #' from a sensor. A day on which more than `max_network_frac` of the judged
 #' stations (and at least two) look decoupled is a weather day and is judged
 #' at no station; it is listed in `days_unjudged`. And a station is objected
-#' to only after `min_consecutive_days` judged days in a row: a front lasts a
+#' to only after `min_consecutive_days` days in a row: a front lasts a
 #' day, a dead element lasts weeks. A single station without a network can
-#' only use the second rule. The verdict is per day: all valid humidity values
-#' of an objected day are removed. Without any usable temperature the level
-#' says so, records it, and hands the pair back unchanged.
+#' only use the second rule, and fog that lasts gets past it: on ten years of
+#' quality-checked MeteoSwiss series, each station run alone, the level
+#' objected to 28 to 51 days per station, most of them from October to
+#' February, and a reference sensor standing flat at 99 percent for three
+#' days among low-cost elements that kept moving was objected to as well.
+#' The verdict is per day: all valid humidity values of an objected day are
+#' removed. Without any usable temperature the level says so, records it, and
+#' hands the pair back unchanged.
 #'
 #' @param input xts of relative humidity, or list from a previous QC level.
 #' @param temperature The temperature run: its result list (preferred; its
@@ -33,8 +40,9 @@
 #' @param decouple_r Correlation at or above which a day counts as decoupled
 #'   (healthy days are strongly negative).
 #' @param decouple_trange Minimum diurnal temperature range in Kelvin.
-#' @param decouple_min_n Minimum valid T/RH pairs per day.
-#' @param min_consecutive_days Judged days in a row a station must look
+#' @param decouple_min_n Minimum valid T/RH pairs per day; NULL (default)
+#'   takes ten hours of values at the time step of the data (60 at 10 minutes).
+#' @param min_consecutive_days Days in a row a station must look
 #'   decoupled before any of them is objected to.
 #' @param max_network_frac Share of the judged stations above which a day
 #'   counts as a weather day and is not judged at all (needs at least two
@@ -58,7 +66,7 @@ RH_QC_5_decoupling <- function(input,
                                temperature = NULL,
                                decouple_r = -0.3,
                                decouple_trange = 3,
-                               decouple_min_n = 60,
+                               decouple_min_n = NULL,
                                min_consecutive_days = 2,
                                max_network_frac = 0.25,
                                verbose = TRUE) {
@@ -72,19 +80,23 @@ RH_QC_5_decoupling <- function(input,
   #-------------------------------------------------------------------------------
   # validate the parameters, because the caller may set them freely
 
-  # the decoupling threshold is a correlation
   if (!is.numeric(decouple_r) || decouple_r <= -1 || decouple_r >= 1)
     stop("decouple_r must be a correlation strictly between -1 and 1.")
   # a flat day carries no signal
   if (!is.numeric(decouple_trange) || decouple_trange <= 0)
     stop("decouple_trange must be a positive range in Kelvin.")
+  # the pairs a day needs default to ten hours of values, whatever the time step
+  if (is.null(decouple_min_n)) {
+    step_sec <- input$qc_info$dataset_humidity$time_step_sec
+    decouple_min_n <- if (is.finite(step_sec) && step_sec > 0) max(3, round(36000 / step_sec)) else 60
+  }
   # a correlation from a handful of pairs is noise
   if (!is.numeric(decouple_min_n) || decouple_min_n < 3)
     stop("decouple_min_n must be at least 3.")
-  # at least one day in a row must be required
-  if (!is.numeric(min_consecutive_days) || min_consecutive_days < 1)
-    stop("min_consecutive_days must be at least 1.")
-  # the weather share must be a usable fraction; 1 means the rule is off
+  if (!is.numeric(min_consecutive_days) || length(min_consecutive_days) != 1 ||
+      min_consecutive_days < 1 || min_consecutive_days != round(min_consecutive_days))
+    stop("min_consecutive_days must be a whole number, at least 1.")
+  # 1 switches the network rule off
   if (!is.numeric(max_network_frac) || max_network_frac <= 0 || max_network_frac > 1)
     stop("max_network_frac must lie in (0, 1].")
 
@@ -99,7 +111,7 @@ RH_QC_5_decoupling <- function(input,
     input
   }
   if (is.null(temperature)) return(skip("no temperature supplied"))
-  # the whole chain result: take its CLEANED series
+  # the whole chain result: take its cleaned series
   tx <- temperature
   if (is.list(tx) && !inherits(tx, "xts")) {
     if (!"qc_data" %in% names(tx)) return(skip("temperature list has no 'qc_data'"))
@@ -110,11 +122,10 @@ RH_QC_5_decoupling <- function(input,
   if (is.null(tm)) return(skip("temperature has no logger name or time stamp in common with the humidity"))
 
   #-------------------------------------------------------------------------------
-  # Perform RH QC Level 5
+  # perform RH QC level 5
 
-  # plain numeric matrix of the values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
   # the matched temperatures, NA wherever there is no twin
   TT <- tm$M
@@ -123,23 +134,21 @@ RH_QC_5_decoupling <- function(input,
   day <- format(zoo::index(x), "%Y-%m-%d")
   # the row numbers of every day, once, in the order of the record
   day_rows <- split(seq_along(day), factor(day, levels = unique(day)))
-  # count across all stations
   n_total <- 0
-  # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
-  # per-station coverage: T/RH pairs on days that got a verdict
+  # per-station coverage: valid values on days that got a verdict
   n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
   # humidity stations without a temperature twin cannot be tested
   never_evaluated <- setdiff(colnames(X), tm$loggers)
 
   # the daily verdict per station: NA = no verdict, TRUE = looks decoupled
   V <- matrix(NA, length(day_rows), ncol(X), dimnames = list(names(day_rows), colnames(X)))
-  # the T/RH pairs behind each verdict, for the coverage count
+  # the valid humidity values of each judged day, for the coverage count
   NP <- matrix(0L, length(day_rows), ncol(X), dimnames = dimnames(V))
 
   # first pass: judge every day of every station that has a temperature twin
   for (s in tm$loggers) {
-    # extract humidity vector of this station and its own temperature
+    # this station's humidity and its own temperature
     v <- X[, s]; tv <- TT[, s]
     for (d in seq_along(day_rows)) {
       rows <- day_rows[[d]]
@@ -149,13 +158,11 @@ RH_QC_5_decoupling <- function(input,
       if (length(k) < decouple_min_n) next
       # flat day: the correlation is meaningless, skip instead of flagging fog
       if (diff(range(tv[k])) < decouple_trange) next
-      # the daily T-RH correlation
       r <- suppressWarnings(stats::cor(tv[k], v[k]))
-      # undefined (a constant series): no verdict
-      if (is.na(r)) next
-      # a verdict is reached, whichever way
-      V[d, s] <- r >= decouple_r
-      NP[d, s] <- length(k)
+      # a verdict is reached, whichever way. Undefined means the humidity did
+      # not move at all while the temperature swung: the clearest decoupling
+      V[d, s] <- is.na(r) || r >= decouple_r
+      NP[d, s] <- sum(!is.na(v[rows]))
     }
   }
 
@@ -176,7 +183,7 @@ RH_QC_5_decoupling <- function(input,
     n_judged[s] <- sum(NP[, s])
     # decoupled days; an unjudged day in between breaks the run
     dec <- !is.na(V[, s]) & V[, s]
-    # run-length encode to find CONSECUTIVE stretches
+    # run-length encode to find consecutive stretches
     r <- rle(dec)
     # end and start index of every run
     ends <- cumsum(r$lengths)
@@ -188,26 +195,21 @@ RH_QC_5_decoupling <- function(input,
         flag_days <- c(flag_days, starts[k]:ends[k])
     # nothing decoupled long enough at this station
     if (!length(flag_days)) next
-    # every valid T/RH pair on the objected days
-    v <- X[, s]; tv <- TT[, s]
+    # every valid humidity value on the objected days
+    v <- X[, s]
     hit <- rep(FALSE, length(v))
-    for (d in flag_days) {
-      rows <- day_rows[[d]]
-      hit[rows[!is.na(tv[rows]) & !is.na(v[rows])]] <- TRUE
-    }
+    hit[unlist(day_rows[flag_days])] <- TRUE
+    hit <- hit & !is.na(v)
 
-    # combine the verdict with THIS station's column only
+    # only cells that carry no earlier flag
     mask <- hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
-    # how many cells this level objects to at this station
     n_found <- sum(mask)
 
-    # apply only if something was found
     if (n_found > 0) {
       # blank the decoupled days so later levels never see them
       X[mask, s] <- NA
       # record this level's code (5 = level 5, fixed by convention)
       previous_flag[mask, s] <- 5
-      # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found
     }

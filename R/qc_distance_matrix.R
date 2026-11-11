@@ -15,7 +15,7 @@
 #' @keywords internal
 #' @noRd
 qc_distance_matrix <- function(md) {
-  # coordinates must be numeric and present: a character column dies deep
+  # coordinates must be numeric and present: a character column fails deep
   # inside geosphere, and an NA would silently zero the station's weights
   if (!is.numeric(md$LAT) || !is.numeric(md$LON) || anyNA(md$LAT) || anyNA(md$LON))
     stop("Metadata LAT/LON must be numeric and complete.")

@@ -34,7 +34,7 @@ qc_find_spatial_outliers <- function(M, W, k_sigma, abs_floor, min_neighbours) {
   ns <- ncol(M)
   hit    <- matrix(FALSE, nrow(M), ns, dimnames = dimnames(M))
   judged <- matrix(FALSE, nrow(M), ns, dimnames = dimnames(M))
-  # iterate over all time steps: the weights are static, the data are not
+  # time step by time step: the weights are static, the data are not
   for (t in seq_len(nrow(M))) {
     v <- M[t, ]
     # one objection per pass, until nobody exceeds
@@ -45,12 +45,12 @@ qc_find_spatial_outliers <- function(M, W, k_sigma, abs_floor, min_neighbours) {
       if (sum(vm) < 2) break
       # NA-free copy so the matrix products stay defined
       vf <- ifelse(is.na(v), 0, v)
-      # per station: total weight of its VALID neighbours (denominator of eq. 1)
+      # per station: total weight of its valid neighbours (denominator of eq. 1)
       wsum <- as.vector(W %*% vm)
       # equation (1): weighted neighbour consensus
       mu <- as.vector(W %*% (vm * vf)) / wsum
       mu[wsum == 0] <- NA_real_
-      # per station: NUMBER of valid weighted neighbours
+      # per station: number of valid weighted neighbours
       nn <- rowSums((W > 0) * matrix(vm, ns, ns, byrow = TRUE))
       # who can be judged in this pass
       ok <- !is.na(v) & !is.na(mu) & nn >= min_neighbours
@@ -63,7 +63,7 @@ qc_find_spatial_outliers <- function(M, W, k_sigma, abs_floor, min_neighbours) {
       Mm  <- matrix(mu, ns, ns)
       vmm <- matrix(vm, ns, ns, byrow = TRUE)
       sig <- sqrt(rowSums((W * vmm) * (Xm - Mm)^2, na.rm = TRUE) / pmax(wsum, 1e-12))
-      # equation (4), pure: |v - mu| > max(k*sigma, floor) - NO extra gate;
+      # equation (4), pure: |v - mu| > max(k*sigma, floor) - no extra gate;
       # the ratio says by how much, so the worst offender can be picked
       ratio <- ifelse(ok, abs(v - mu) / pmax(k_sigma * sig, abs_floor), 0)
       if (!any(ratio > 1)) break

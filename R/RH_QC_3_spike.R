@@ -37,47 +37,37 @@ RH_QC_3_spike <- function(input,
   #-------------------------------------------------------------------------------
   # validate the parameters, because the caller may set them freely
   
-  # the half window must be a positive whole number of steps
   if (!is.numeric(dt) || length(dt) != 1 || dt < 1 || dt != round(dt))
     stop("dt must be a positive whole number of time steps.")
-  # the threshold must be a positive humidity difference
   if (!is.numeric(threshold) || length(threshold) != 1 || threshold <= 0)
     stop("threshold must be a positive deviation in percent.")
   
   #-------------------------------------------------------------------------------
-  # Perform RH QC Level 3
+  # perform RH QC level 3
   
-  # plain numeric matrix of the values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
-  # count across all stations
   n_total <- 0
-  # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
   # per-station coverage: how many cells the test was applied to
   n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
 
-  # iterate over all stations (columns)
   for (s in colnames(X)) {
-    # extract data vector of this station
     v <- X[, s]
     # the spike search itself lives in qc_find_spikes(), shared with T_QC_3
     sp <- qc_find_spikes(v, dt, threshold)
     n_judged[s] <- sum(sp$judged)
 
-    # combine the verdict with THIS station's column only
+    # only cells that carry no earlier flag
     mask <- sp$hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
-    # how many cells this level objects to at this station
     n_found <- sum(mask)
     
-    # apply only if something was found
     if (n_found > 0) {
       # blank the spikes so later levels never see them
       X[mask, s] <- NA
       # record this level's code (3 = level 3, fixed by convention)
       previous_flag[mask, s] <- 3
-      # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found
     }

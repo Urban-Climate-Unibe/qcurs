@@ -94,7 +94,8 @@ setdiff(colnames(t_x), md$ID)
 
 Every level takes the list the previous one returned and gives it back with
 its flags and its record added. Change a parameter, re-run from that chunk
-on.
+on. The chunks stand in the order of the runner: level 8 before
+levels 6 and 7, level 9 last.
 
 ```{r t1}
 t_res <- T_QC_1_gross_error(t_x,
@@ -139,6 +140,17 @@ t_res <- T_QC_5_climatic_outliers(t_res,
                                   require_multi_year = TRUE)
 ```
 
+```{r t8}
+# a logger that went indoors: diurnal range collapsed against the network and
+# daily means no longer following the weather; fog fails the second test
+t_res <- T_QC_8_diurnal_range(t_res,
+                              range_frac = 0.4,
+                              min_consecutive_days = 3,
+                              min_obs_per_day = 72,
+                              min_stations = 3,
+                              min_network_swing = 2)   # K the network must move over the run
+```
+
 ```{r t6}
 t_res <- T_QC_6_spatial_consistency(t_res, metadata = md,
                                     k_sigma = 6,
@@ -156,20 +168,10 @@ t_res <- T_QC_7_spatiotemporal_consistency(t_res, metadata = md,
                                            threshold = 0.99)
 ```
 
-```{r t8}
-# a logger that went indoors: diurnal range collapsed against the network AND
-# daily means no longer following the weather; fog fails the second test
-t_res <- T_QC_8_diurnal_range(t_res,
-                              range_frac = 0.4,
-                              min_consecutive_days = 3,
-                              min_obs_per_day = 72,
-                              min_stations = 3,
-                              min_network_swing = 2)   # K the network must move over the run
-```
-
 ```{r t9}
 # a clock an hour or more off: the station lines up with the others only
-# when shifted. Site lags (forest, lake) stay below the hour
+# when shifted. Site lags (forest, lake) reach the hour in single weeks at
+# most, which is why two weeks in a row are needed
 t_res <- T_QC_9_clock_offset(t_res,
                              window_days = 7,
                              max_lag = 12,               # steps searched either way
@@ -181,7 +183,7 @@ t_res <- T_QC_9_clock_offset(t_res,
 ```
 
 ```{r t10, eval = interpolate}
-# ADDS values. Codes 50 (plain gap) and 50 + level (removed, then refilled)
+# this level adds values: codes 50 (plain gap) and 50 + level (removed, then refilled)
 t_res <- T_QC_10_interpolate(t_res,
                              maxgap = 5,
                              refill_flagged = TRUE)
@@ -269,7 +271,7 @@ setdiff(colnames(rh_x), colnames(t_x))
 ```
 
 ```{r rh1, eval = run_humidity}
-# pass the WHOLE temperature result: the flags are inherited from it
+# pass the whole temperature result: the flags are inherited from it
 rh_res <- RH_QC_1_inherit_temperature(rh_x, temperature_flags = t_res,
                                       inherit_gapfill = FALSE)
 ```
@@ -297,7 +299,7 @@ rh_res <- RH_QC_4_stuck_values(rh_res,
 ```
 
 ```{r rh5, eval = run_humidity}
-# uses the CLEANED temperature of t_res
+# uses the cleaned temperature of t_res
 rh_res <- RH_QC_5_decoupling(rh_res, temperature = t_res,
                              decouple_r = -0.3,
                              decouple_trange = 3,

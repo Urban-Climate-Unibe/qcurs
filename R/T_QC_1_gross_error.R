@@ -33,34 +33,28 @@ T_QC_1_gross_error <- function(input,
   #-------------------------------------------------------------------------------
   # validate the parameters, because the caller may set them freely
 
-  # both bounds must be single numbers
   if (!is.numeric(threshold_max) || length(threshold_max) != 1 ||
       !is.numeric(threshold_min) || length(threshold_min) != 1)
     stop("threshold_max and threshold_min must be single numbers.")
-  # the lower bound must lie below the upper bound
   if (threshold_min >= threshold_max)
     stop("threshold_min must be below threshold_max.")
 
   #-------------------------------------------------------------------------------
-  # Perform QC Level 1
+  # perform QC level 1
 
-  # plain numeric matrix of the values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
 
   # look for cells that hold a value and violate the bounds
   hit <- !is.na(X) & (X > threshold_max | X <= threshold_min)
   # only cells that carry no earlier flag
   mask <- hit & (is.na(previous_flag) | previous_flag == 0)
-  # how many cells this level objects to
   n_total <- sum(mask)
-  # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
   # per-station coverage: every cell that held a value was judged
   n_judged <- stats::setNames(colSums(!is.na(X)), colnames(X))
 
-  # apply only if something was found
   if (n_total > 0) {
     # blank the objected values so later levels never see them
     X[mask] <- NA

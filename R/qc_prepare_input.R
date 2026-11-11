@@ -54,27 +54,25 @@ qc_prepare_input <- function(input, what = "temperature", level = NULL) {
   #-------------------------------------------------------------------------------
   # normalise the input first if necessary
 
-  # abort if input is a data frame
   if (is.data.frame(input))
     stop("Input is a data frame. Convert it first into xts: x <- qc_as_xts(...)!")
 
   if (!is.list(input)) {
-    # input is not a list -> this is the first level of the chain, build the pair
+    # no list yet: this is the first level of the chain, build the pair
     if (!inherits(input, "xts"))
       stop(sprintf("Input must be an xts object or a chain result list (%s).", what))
     # never coerce silently: a character matrix would compare lexically and pass unnoticed
     if (!is.numeric(input))
       stop(sprintf("%s data must be numeric.", what))
-    # refuse an empty series here, otherwise `input * 0` fails with a cryptic message
+    # refuse an empty series here, otherwise `input * 0` fails with an obscure message
     if (nrow(input) == 0 || ncol(input) == 0)
       stop(sprintf("%s input is empty (no rows or no columns).", what))
     # take the report qc_as_xts() attached, and strip it from the data - otherwise
-    # it would ride along in qc_data AND qc_data_flagged through the whole chain
+    # it would ride along in qc_data and qc_data_flagged through the whole chain
     conversion <- xts::xtsAttributes(input)$qc_conversion
     if (!is.null(conversion)) xts::xtsAttributes(input) <- NULL
-    # build the list
     input <- list(qc_data = input,
-                  # generates a 0 matrix (same dimension as qc_data). All entries are 0 except NA
+                  # the flags, same shape: 0 where a value stands, NA where none does
                   qc_data_flagged = input * 0,
                   qc_info = list())
     # file the report under the chain's name, next to dataset_<what>
@@ -85,58 +83,49 @@ qc_prepare_input <- function(input, what = "temperature", level = NULL) {
   # then validate the input. From here on input is always a list: either it came
   # as one, or the block above just built it
 
-  # ...check whether the list contains correctly labelled data
   if (!all(c("qc_data", "qc_data_flagged") %in% names(input)))
     stop("Input list must contain 'qc_data' and 'qc_data_flagged'.")
-  # if yes, then assign the data to its corresponding variable
   x   <- input$qc_data
   flg <- input$qc_data_flagged
-  # ... check whether qc_data is an xts object
   if (!inherits(x, "xts"))
     stop("qc_data must be an xts object.")
-  # ... check whether qc_data_flagged is an xts object
   if (!inherits(flg, "xts"))
     stop("qc_data_flagged must be an xts object.")
-  # ... check whether qc_data is numeric
   if (!is.numeric(x))
     stop("qc_data must be numeric.")
-  # ... check whether qc_data_flagged is numeric
   if (!is.numeric(flg))
     stop("qc_data_flagged must be numeric.")
-  # ... check whether there is any data at all (empty loops would report "0 flagged" silently)
+  # no data at all: the loops would report "0 flagged" in silence
   if (nrow(x) == 0 || ncol(x) == 0)
     stop("qc_data is empty (no rows or no columns).")
-  # ... check whether qc_data and qc_data_flagged have the same dimension
   if (!identical(dim(x), dim(flg)))
     stop("qc_data and qc_data_flagged must have identical dimensions.")
-  # ... check whether the stations are named at all (unnamed columns make every station loop a no-op)
+  # unnamed columns make every station loop a no-op
   if (is.null(colnames(x)) || any(is.na(colnames(x))) || any(!nzchar(colnames(x))))
     stop("qc_data needs non-empty column names (station IDs).")
-  # ... check whether every station name occurs only once (duplicates make x[, name] ambiguous)
+  # duplicated names make x[, name] ambiguous
   if (anyDuplicated(colnames(x))) stop("qc_data has duplicated station names.")
-  # ... check whether qc_data and qc_data_flagged have the same column-names
   if (!identical(colnames(x), colnames(flg)))
     stop("qc_data and qc_data_flagged must have identical station columns in identical order.")
-  # ... check whether qc_data and qc_data_flagged have the same time-index
   if (!isTRUE(all.equal(as.numeric(index(x)), as.numeric(index(flg)))))
     stop("qc_data and qc_data_flagged must have identical time indices.")
-  # ... check whether any time stamp occurs twice (breaks rolling windows and time based subsetting)
+  # a time stamp twice breaks rolling windows and time based subsetting
   if (anyDuplicated(index(x)))
     stop("qc_data has duplicated time stamps.")
-  # ... check whether the time index runs forward (rolling windows assume ascending order)
+  # rolling windows assume ascending order
   if (is.unsorted(index(x)))
     stop("qc_data time index must be in ascending order.")
 
-  # ... determine the dominant time step ONCE, so window based levels do not have to
-  #     guess it from the first two stamps, and warn if the series is not on a regular grid
+  # the dominant time step, determined once here so that the window based
+  # levels do not guess it from the first two stamps; warn if the grid is not regular
   time_step_sec <- NA_real_
   irregular <- FALSE
   # the dataset entry is named by the variable, so a temperature run and a
-  # humidity run on the SAME chain list keep separate records:
+  # humidity run on the same chain list keep separate records:
   # qc_info$dataset_temperature and qc_info$dataset_humidity
   ds_name <- paste0("dataset_", what)
-  # the grid is a property of the DATASET, not of the level: warn on the first
-  # level of EACH variable only, otherwise the same warning appears once per
+  # the grid is a property of the dataset, not of the level: warn on the first
+  # level of each variable only, otherwise the same warning appears once per
   # level and drowns the real ones
   first_pass <- is.null(input$qc_info[[ds_name]])
   if (nrow(x) > 1) {
@@ -152,22 +141,20 @@ qc_prepare_input <- function(input, what = "temperature", level = NULL) {
                       sum(steps != time_step_sec), length(steps), time_step_sec / 60))
   }
 
-  # ... the value resolution: the smallest step between two distinct values.
-  #     Level 4 needs it - a stuck window has to be longer than any genuine
-  #     plateau the sensor can produce at this resolution
+  # the value resolution: the smallest step between two distinct values.
+  # Level 4 needs it - a stuck window has to be longer than any genuine
+  # plateau the sensor can produce at this resolution
   vals <- sort(unique(round(as.vector(coredata(x)), 6)))
   resolution <- if (length(vals) > 1) min(diff(vals)) else NA_real_
 
-  # ... check whether qc_info exists. if not, create it
   if (is.null(input$qc_info)) input$qc_info <- list()
-  # ... a second run of the same level would overwrite its report in silence
+  # a second run of the same level would overwrite its report in silence
   if (!is.null(level) && !is.null(input$qc_info[[level]]))
     warning(sprintf("%s already ran on this chain: earlier flags are kept, its report is replaced.", level))
-  # ... record what we learned about the dataset, so every level can rely on it.
-  #     ONE entry per VARIABLE, rewritten on every call of that variable's
-  #     chain: within a chain the dataset never changes, so the rewrite is
-  #     idempotent - while a later humidity run writes its own entry next to
-  #     the temperature one instead of overwriting it.
+  # record what is known about the dataset, so every level can rely on it:
+  # one entry per variable, rewritten on every call of that variable's chain.
+  # Within a chain the dataset never changes, so the rewrite is idempotent,
+  # and a later humidity run writes its own entry next to the temperature one
   input$qc_info[[ds_name]] <- list(variable             = what,
                                    n_time               = nrow(x),
                                    n_stations           = ncol(x),
@@ -178,6 +165,5 @@ qc_prepare_input <- function(input, what = "temperature", level = NULL) {
                                    irregular_time_steps = irregular,
                                    resolution           = resolution)
 
-  # hand the validated chain list back to the calling level
   input
 }

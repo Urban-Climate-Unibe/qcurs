@@ -31,3 +31,28 @@ test_that("the plot functions draw the Biel result and return their tables", {
   expect_error(qc_plot_station(ch$res, "nope"), "not in the result")
   expect_error(qc_plot_timeline(ch$x), "chain result")
 })
+
+test_that("the plot functions survive a clean result, an emptied station and a lone `to`", {
+  set.seed(9)
+  n <- 5 * 144
+  ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = n)
+  h <- as.numeric(ti - ti[1], units = "hours")
+  X <- sapply(1:4, function(j) 18 + 6 * sin(2 * pi * (h - 9) / 24) + 0.3 * j + rnorm(n, 0, 0.15))
+  colnames(X) <- paste0("S", 1:4)
+  x <- xts::xts(X, order.by = ti)
+  grDevices::pdf(NULL); on.exit(grDevices::dev.off())
+  clean <- run_qc_temperature(x, verbose = FALSE)
+  expect_equal(sum(zoo::coredata(clean$qc_data_flagged) > 0), 0)
+  expect_equal(dim(qc_plot_levels(clean, by = "station")), c(0, 4))
+  # a result only the interpolation went through has no level to show
+  expect_equal(nrow(qc_plot_levels(T_QC_10_interpolate(x, verbose = FALSE))), 0)
+  # a station that only ever sent its fault code: every value objected to
+  xb <- x
+  xb[, "S2"] <- 999
+  res <- run_qc_temperature(xb, verbose = FALSE)
+  sp <- qc_plot_station(res, "S2")
+  expect_equal(nrow(sp), n)
+  # `to` without `from` cuts the window
+  sp_to <- qc_plot_station(res, "S2", to = "2025-06-02")
+  expect_equal(nrow(sp_to), 2 * 144)
+})

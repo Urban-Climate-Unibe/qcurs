@@ -8,6 +8,19 @@ test_that("level 7 skips every Biel station and says so", {
   i7 <- biel_chain()$res$qc_info$t7_spatiotemporal_consistency
   expect_equal(i7$n_flagged, 0)
   expect_length(i7$never_evaluated, 7)
+  # by name, with the neighbours each one found kept apart
+  expect_setequal(i7$never_evaluated, colnames(biel_chain()$x))
+  expect_true(all(i7$n_neighbours < 5))
+})
+
+test_that("level 5 lists a station-month that reported but never had a full day", {
+  # 40 days in one month and the next, 30 values a day: no day is dense enough
+  ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = 40 * 144)
+  v <- 18 + rnorm(length(ti), 0, 1)
+  v[as.numeric(format(ti, "%H")) >= 5] <- NA
+  x <- xts::xts(matrix(v, ncol = 1, dimnames = list(NULL, "S1")), order.by = ti)
+  i5 <- T_QC_5_climatic_outliers(x, verbose = FALSE)$qc_info$t5_climatic_outliers
+  expect_equal(i5$refused, c("S1/06(days=0,y=0)", "S1/07(days=0,y=0)"))
 })
 
 test_that("level 6 names the stations it could never evaluate", {

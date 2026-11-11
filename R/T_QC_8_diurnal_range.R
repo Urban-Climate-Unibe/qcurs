@@ -35,8 +35,9 @@
 #'   at all (3: a swing over two days is just one difference).
 #' @param min_network_swing Minimum swing of the network's daily means over a
 #'   run, in Kelvin, for the run to be decidable.
-#' @param min_obs_per_day Valid values a day needs to have its range judged
-#'   (72 = half of a 10-minute day).
+#' @param min_obs_per_day Valid values a day needs to have its range judged;
+#'   NULL (default) takes half a day at the time step of the data (72 at
+#'   10 minutes).
 #' @param min_stations Stations with a range a day needs before it can serve
 #'   as the yardstick; with fewer stations than that in the data the level
 #'   skips itself and says why.
@@ -57,7 +58,7 @@
 T_QC_8_diurnal_range <- function(input,
                                  range_frac = 0.4,
                                  min_consecutive_days = 3,
-                                 min_obs_per_day = 72,
+                                 min_obs_per_day = NULL,
                                  min_stations = 3,
                                  min_network_swing = 2,
                                  verbose = TRUE) {
@@ -71,12 +72,16 @@ T_QC_8_diurnal_range <- function(input,
   #-------------------------------------------------------------------------------
   # validate the parameters, because the caller may set them freely
 
-  # the fraction must lie strictly between 0 and 1
   if (!is.numeric(range_frac) || length(range_frac) != 1 || range_frac <= 0 || range_frac >= 1)
     stop("range_frac must be a fraction between 0 and 1.")
-  # at least one day in a row must be required
-  if (!is.numeric(min_consecutive_days) || min_consecutive_days < 1)
-    stop("min_consecutive_days must be at least 1.")
+  if (!is.numeric(min_consecutive_days) || length(min_consecutive_days) != 1 ||
+      min_consecutive_days < 1 || min_consecutive_days != round(min_consecutive_days))
+    stop("min_consecutive_days must be a whole number, at least 1.")
+  # the values a day needs default to half a day, whatever the time step
+  if (is.null(min_obs_per_day)) {
+    step_sec <- input$qc_info$dataset_temperature$time_step_sec
+    min_obs_per_day <- if (is.finite(step_sec) && step_sec > 0) max(2, ceiling(43200 / step_sec)) else 72
+  }
   # a range computed from too few points is meaningless
   if (!is.numeric(min_obs_per_day) || min_obs_per_day < 2)
     stop("min_obs_per_day must be at least 2.")
@@ -86,7 +91,8 @@ T_QC_8_diurnal_range <- function(input,
   # a zero swing would call every calm spell decidable
   if (!is.numeric(min_network_swing) || length(min_network_swing) != 1 || min_network_swing <= 0)
     stop("min_network_swing must be a positive number of Kelvin.")
-  # too few stations altogether: not an error but a skip - say why, record it, hand the pair back
+  # too few stations altogether: not an error but a skip - say why, record
+  # it, hand the pair back
   if (ncol(input$qc_data) < min_stations) {
     reason <- sprintf("only %d station(s); need at least %d for a network range", ncol(input$qc_data), min_stations)
     if (isTRUE(verbose))
@@ -96,31 +102,25 @@ T_QC_8_diurnal_range <- function(input,
   }
 
   #-------------------------------------------------------------------------------
-  # Perform QC Level 8
+  # perform QC level 8
 
-  # plain numeric matrix of the values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
   # calendar day of every time step, in the time zone of the index (format()
   # honours it; as.Date() only does so from R 4.3 on)
   day <- format(zoo::index(x), "%Y-%m-%d")
   # the row numbers of every day, once, in the order of the record
   day_rows <- split(seq_along(day), factor(day, levels = unique(day)))
-  # count across all stations
   n_total <- 0
-  # per-station tally for the report
   n_station <- stats::setNames(integer(ncol(X)), colnames(X))
   # per-station coverage: values on days that got a range verdict
   n_judged <- stats::setNames(integer(ncol(X)), colnames(X))
 
   # diurnal range per day and station: max minus min, NA when the day is too sparse
   RNG <- vapply(colnames(X), function(s) vapply(day_rows, function(rows) {
-    # the day's values
     z <- X[rows, s]
-    # too sparse: no verdict for this day
     if (sum(!is.na(z)) < min_obs_per_day) return(NA_real_)
-    # the diurnal amplitude
     diff(range(z, na.rm = TRUE))
   }, numeric(1)), numeric(length(day_rows)))
   # always a days x stations matrix, even for a single day
@@ -145,21 +145,19 @@ T_QC_8_diurnal_range <- function(input,
   # collapsed runs the weather did not allow to decide
   runs_undecided <- character(0)
 
-  # iterate over all stations (columns)
   for (s in colnames(X)) {
-    # extract data vector of this station and its daily ranges
+    # this station's series and its daily ranges
     v <- X[, s]; rng <- RNG[, s]
-    # a day is judged when the station AND the network have a range
+    # a day is judged when the station and the network have a range
     judged_day <- !is.na(rng) & !is.na(ref)
     # every value on a judged day counts as judged
     n_judged[s] <- sum(!is.na(v[unlist(day_rows[judged_day])]))
     # days where this station collapsed while the network did not
     low <- judged_day & rng < range_frac * ref
-    # run-length encode to find CONSECUTIVE stretches of collapsed days
+    # run-length encode to find consecutive stretches of collapsed days
     r <- rle(low)
-    # end index of every run
+    # end and start index of every run
     ends <- cumsum(r$lengths)
-    # start index of every run
     starts <- ends - r$lengths + 1
     # every TRUE run that is long enough is a candidate; it is objected to
     # only when the station's daily means also stopped following the weather
@@ -188,18 +186,15 @@ T_QC_8_diurnal_range <- function(input,
     hit[unlist(day_rows[flag_days])] <- TRUE
     hit <- hit & !is.na(v)
 
-    # combine the verdict with THIS station's column only
+    # only cells that carry no earlier flag
     mask <- hit & (is.na(previous_flag[, s]) | previous_flag[, s] == 0)
-    # how many cells this level objects to at this station
     n_found <- sum(mask)
 
-    # apply only if something was found
     if (n_found > 0) {
       # blank the collapsed days so later levels never see them
       X[mask, s] <- NA
       # record this level's code (8 = level 8, fixed by convention)
       previous_flag[mask, s] <- 8
-      # add the number of new flags to the counters
       n_station[s] <- n_found
       n_total <- n_total + n_found
     }

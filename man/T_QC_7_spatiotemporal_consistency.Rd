@@ -30,7 +30,10 @@ the level.}
 \value{
 The chain list with qc_data, qc_data_flagged and qc_info. Stations
   without a full neighbourhood, or without a metadata row, are listed in
-  `qc_info$t7_spatiotemporal_consistency$never_evaluated`.
+  `qc_info$t7_spatiotemporal_consistency$never_evaluated`, the neighbours
+  each station found within the radius in `n_neighbours`. With fewer than
+  `k_neighbours + 1` stations in data AND metadata the level skips itself,
+  records why, and hands the pair back unchanged.
 }
 \description{
 Removes values that are simultaneously extreme in space (against ALL nearby

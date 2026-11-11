@@ -63,8 +63,7 @@ test_that("levels 6 and 7 survive metadata that match no station at all", {
   expect_warning(r6 <- T_QC_6_spatial_consistency(x, metadata = md, verbose = FALSE), "No metadata for: A, B, C")
   expect_true(r6$qc_info$t6_spatial_consistency$skipped)
   expect_warning(r7 <- T_QC_7_spatiotemporal_consistency(x, metadata = md, verbose = FALSE), "No metadata for: A, B, C")
-  expect_equal(r7$qc_info$t7_spatiotemporal_consistency$never_evaluated, paste0(c("A", "B", "C"), "(no metadata)"))
-  expect_true(all(r7$qc_info$t7_spatiotemporal_consistency$n_judged_by_station == 0))
+  expect_true(r7$qc_info$t7_spatiotemporal_consistency$skipped)
   # the humidity twin of level 6 skips the same way
   expect_warning(r_rh7 <- RH_QC_7_dewpoint_consistency(x, temperature = x, metadata = md, verbose = FALSE), "No metadata")
   expect_true(r_rh7$qc_info$rh7_dewpoint_consistency$skipped)
@@ -77,9 +76,10 @@ test_that("qc_summary lists every level that judged, with flags that match the r
   # levels 1-9 x 7 stations; the interpolation (10) adds values and has no row
   expect_equal(nrow(s), 9 * 7)
   expect_false("t10_interpolate" %in% s$level)
-  expect_equal(unique(s$level), paste0("t", 1:9, "_", c("gross_error", "out_of_range", "time_consistency",
-               "stuck_values", "climatic_outliers", "spatial_consistency", "spatiotemporal_consistency", "diurnal_range",
-               "clock_offset")))
+  # in the order the levels ran: 8 before 6 and 7, 9 last
+  expect_equal(unique(s$level), paste0("t", c(1:5, 8, 6, 7, 9), "_", c("gross_error", "out_of_range", "time_consistency",
+               "stuck_values", "climatic_outliers", "diurnal_range", "spatial_consistency",
+               "spatiotemporal_consistency", "clock_offset")))
   # the per-level sums are the levels' own tallies
   for (k in unique(s$level)) expect_equal(sum(s$flagged[s$level == k]), ch$res$qc_info[[k]]$n_flagged)
   # judged never exceeds the observed values, and the share is a percentage
@@ -97,4 +97,34 @@ test_that("qc_summary lists every level that judged, with flags that match the r
   expect_true(all(grepl("^rh", s_rh$level)))
   expect_true(all(grepl("^t", qc_summary(rh_res, "t")$level)))
   expect_error(qc_summary(tt), "chain result")
+})
+
+test_that("counts that must be whole numbers are refused before the work starts", {
+  ti <- seq(as.POSIXct("2025-06-01", tz = "UTC"), by = "10 min", length.out = 432)
+  x  <- xts::xts(matrix(20 + rnorm(432 * 3, 0, 0.2), ncol = 3, dimnames = list(NULL, c("A", "B", "C"))), order.by = ti)
+  md <- data.frame(ID = c("A", "B", "C"), LON = 7.44 + 0:2 * 0.004, LAT = 46.95, Landuse = "Sealed Areas")
+  expect_error(T_QC_4_stuck_values(x, min_non_na = 5.5), "whole number")
+  expect_error(T_QC_6_spatial_consistency(x, metadata = md, k_neighbours = 2.5), "whole numbers")
+  expect_error(T_QC_7_spatiotemporal_consistency(x, metadata = md, k_neighbours = 2.5), "whole number")
+  expect_error(T_QC_8_diurnal_range(x, min_consecutive_days = 2.5), "whole number")
+  expect_error(T_QC_9_clock_offset(x, min_consecutive_windows = 1.5), "whole number")
+  expect_error(RH_QC_5_decoupling(x, temperature = x, min_consecutive_days = 2.5), "whole number")
+  expect_error(RH_QC_7_dewpoint_consistency(x, temperature = x, metadata = md, min_neighbours = 1.5), "whole numbers")
+})
+
+test_that("the interpolation measures a gap in time, not in rows", {
+  # rows 08:00-10:00, then no rows until 16:10: a hole in the index, not NA cells
+  ti <- c(seq(as.POSIXct("2025-06-01 08:00", tz = "UTC"), by = "10 min", length.out = 13),
+          seq(as.POSIXct("2025-06-01 16:10", tz = "UTC"), by = "10 min", length.out = 6))
+  x <- xts::xts(cbind(S1 = c(rep(20, 12), NA, rep(26, 6)), S2 = c(rep(20, 13), rep(26, 6))), order.by = ti)
+  r <- suppressWarnings(T_QC_10_interpolate(x, verbose = FALSE))
+  # the 10:00 value sits at the edge of a hole of more than six hours: not filled
+  expect_true(is.na(zoo::coredata(r$qc_data)[13, "S1"]))
+  expect_equal(r$qc_info$t10_interpolate$n_gap_filled, 0)
+  # the same single gap on a full grid is filled as before
+  tr <- seq(as.POSIXct("2025-06-01 08:00", tz = "UTC"), by = "10 min", length.out = 19)
+  xr <- xts::xts(cbind(S1 = c(rep(20, 12), NA, rep(26, 6))), order.by = tr)
+  rr <- T_QC_10_interpolate(xr, verbose = FALSE)
+  expect_equal(unname(zoo::coredata(rr$qc_data)[13, "S1"]), 23)
+  expect_equal(unname(zoo::coredata(rr$qc_data_flagged)[13, "S1"]), 50)
 })

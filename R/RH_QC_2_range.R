@@ -37,19 +37,16 @@ RH_QC_2_range <- function(input,
   #-------------------------------------------------------------------------------
   # validate the parameters, because the caller may set them freely
 
-  # a ceiling below 100 would flag genuine saturation
   if (!is.numeric(rh_max) || length(rh_max) != 1 || rh_max < 100)
     stop("rh_max below 100 would flag genuine saturation; use rh_max >= 100.")
-  # the floor must lie below saturation
   if (!is.numeric(rh_min) || length(rh_min) != 1 || rh_min < 0 || rh_min >= 100)
     stop("rh_min must lie in [0, 100).")
 
   #-------------------------------------------------------------------------------
-  # Perform RH QC Level 2
+  # perform RH QC level 2
 
-  # plain numeric matrix of the values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
 
   # cells that hold a value outside the physical range. Elementwise over the
@@ -57,14 +54,11 @@ RH_QC_2_range <- function(input,
   hit <- !is.na(X) & (X < rh_min | X > rh_max)
   # only cells that carry no earlier flag
   mask <- hit & (is.na(previous_flag) | previous_flag == 0)
-  # how many cells this level objects to
   n_total <- sum(mask)
-  # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
   # per-station coverage: every cell that held a value was judged
   n_judged <- stats::setNames(colSums(!is.na(X)), colnames(X))
 
-  # apply only if something was found
   if (n_total > 0) {
     # blank the impossible values so later levels never see them
     X[mask] <- NA

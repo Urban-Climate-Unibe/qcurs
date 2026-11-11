@@ -9,7 +9,7 @@ RH_QC_5_decoupling(
   temperature = NULL,
   decouple_r = -0.3,
   decouple_trange = 3,
-  decouple_min_n = 60,
+  decouple_min_n = NULL,
   min_consecutive_days = 2,
   max_network_frac = 0.25,
   verbose = TRUE
@@ -27,9 +27,10 @@ NULL (default) skips the level.}
 
 \item{decouple_trange}{Minimum diurnal temperature range in Kelvin.}
 
-\item{decouple_min_n}{Minimum valid T/RH pairs per day.}
+\item{decouple_min_n}{Minimum valid T/RH pairs per day; NULL (default)
+takes ten hours of values at the time step of the data (60 at 10 minutes).}
 
-\item{min_consecutive_days}{Judged days in a row a station must look
+\item{min_consecutive_days}{Days in a row a station must look
 decoupled before any of them is objected to.}
 
 \item{max_network_frac}{Share of the judged stations above which a day
@@ -57,7 +58,9 @@ The temperature is matched cell by cell, by exact time stamp and logger
 name (`qc_match_grid()`, the same rule as levels 1 and 7); a cell without
 a temperature twin is not judged. Days with less than `decouple_trange` of
 temperature amplitude are skipped, because without a diurnal cycle the
-correlation is meaningless - fog days would otherwise be flagged.
+correlation is meaningless - fog days would otherwise be flagged. A day on
+which the humidity does not move at all while the temperature swings counts
+as decoupled.
 
 The correlation also breaks down on days with an air mass change: a warm
 front with rain lifts temperature and humidity together, cold advection
@@ -66,11 +69,16 @@ to 5 percent of all days, 13 percent in winter. Two rules separate weather
 from a sensor. A day on which more than `max_network_frac` of the judged
 stations (and at least two) look decoupled is a weather day and is judged
 at no station; it is listed in `days_unjudged`. And a station is objected
-to only after `min_consecutive_days` judged days in a row: a front lasts a
+to only after `min_consecutive_days` days in a row: a front lasts a
 day, a dead element lasts weeks. A single station without a network can
-only use the second rule. The verdict is per day: all valid humidity values
-of an objected day are removed. Without any usable temperature the level
-says so, records it, and hands the pair back unchanged.
+only use the second rule, and fog that lasts gets past it: on ten years of
+quality-checked MeteoSwiss series, each station run alone, the level
+objected to 28 to 51 days per station, most of them from October to
+February, and a reference sensor standing flat at 99 percent for three
+days among low-cost elements that kept moving was objected to as well.
+The verdict is per day: all valid humidity values of an objected day are
+removed. Without any usable temperature the level says so, records it, and
+hands the pair back unchanged.
 }
 \examples{
 \dontrun{

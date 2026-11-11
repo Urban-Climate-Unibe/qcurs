@@ -49,7 +49,7 @@ T_QC_2_out_of_range <- function(input,
   # validate the parameters, because the caller may set them freely
 
   seasons <- c("winter", "spring", "summer", "autumn")
-  # ... all four seasons must be present
+  # all four seasons, each with a numeric lower bound below its upper bound
   if (!all(seasons %in% names(season_thresholds)))
     stop("season_thresholds must contain winter, spring, summer and autumn.")
   for (s in seasons) {
@@ -65,23 +65,20 @@ T_QC_2_out_of_range <- function(input,
   #-------------------------------------------------------------------------------
   # assign every time step to its season and build the bound vectors
 
-  # extract the month number of every time step ...
+  # meteorological season of every time step (DJF, MAM, JJA, SON)
   mon <- as.numeric(format(zoo::index(x), "%m"))
-  # ... and assign it to its corresponding season (DJF, MAM, JJA, SON)
   season <- ifelse(mon %in% c(12, 1, 2), "winter",
             ifelse(mon %in% c(3, 4, 5), "spring",
             ifelse(mon %in% c(6, 7, 8), "summer", "autumn")))
-  # lower bound valid at each time step (length = number of time steps)
+  # the bounds valid at each time step
   lo <- vapply(season, function(s) season_thresholds[[s]]$min_val, numeric(1), USE.NAMES = FALSE)
-  # upper bound valid at each time step
   hi <- vapply(season, function(s) season_thresholds[[s]]$max_val, numeric(1), USE.NAMES = FALSE)
 
   #-------------------------------------------------------------------------------
-  # Perform QC Level 2
+  # perform QC level 2
 
-  # plain numeric matrix of the values (time in rows, stations in columns)
+  # plain matrices of values and flags (time in rows, stations in columns)
   X <- coredata(x)
-  # plain numeric matrix of the flags, same shape
   previous_flag <- coredata(flg)
   # the bounds repeated across all stations, so the comparison is cell by cell
   LO <- matrix(lo, nrow(X), ncol(X))
@@ -90,17 +87,15 @@ T_QC_2_out_of_range <- function(input,
   hit <- !is.na(X) & (X < LO | X > HI)
   # only cells that carry no earlier flag
   mask <- hit & (is.na(previous_flag) | previous_flag == 0)
-  # how many cells this level objects to
   n_total <- sum(mask)
-  # per-station tally for the report
   n_station <- stats::setNames(colSums(mask), colnames(X))
   # per-station coverage: every cell that held a value was judged
   n_judged <- stats::setNames(colSums(!is.na(X)), colnames(X))
-  # per-season tally: row(mask)[mask] gives the time index of every flagged cell
+  # flagged cells per season
   n_season <- c(winter = 0L, spring = 0L, summer = 0L, autumn = 0L)
 
-  # apply only if something was found
   if (n_total > 0) {
+    # row(mask)[mask] is the time index of every flagged cell
     tab <- table(factor(season[row(mask)[mask]], levels = seasons))
     n_season[seasons] <- as.integer(tab[seasons])
     # blank the objected values so later levels never see them
